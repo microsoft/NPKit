@@ -1,0 +1,31 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/include/devcomm.h b/src/include/devcomm.h
+index 08398a7..7084e0b 100644
+--- a/src/include/devcomm.h
++++ b/src/include/devcomm.h
+@@ -11,6 +11,9 @@
+ #include "nccl.h"
+ #include "rccl_bfloat16.h"
+ #include "align.h"
++#if defined(ENABLE_NPKIT)
++#include "npkit/npkit_struct.h"
++#endif
+ #include <stdint.h>
+ // [RCCL] Support for clique-based kernels
+ #include "clique/CliqueCommon.h"
+@@ -275,6 +278,13 @@ struct ncclChannel {
+       struct ncclWork* workFifoGdr;
+       struct ncclWork* workFifoDev;
+       void* gdrMemDesc;
++
++#if defined(ENABLE_NPKIT)
++      NpKitEvent npKitEvent;
++      NpKitEventCollectContext* gpuNpKitEventCollectContext;
++      NpKitEventCollectContext* cpuNpKitEventCollectContext;
++      uint64_t* cpuTimestamp;
++#endif
+     };
+     int data[0x80];
+   };

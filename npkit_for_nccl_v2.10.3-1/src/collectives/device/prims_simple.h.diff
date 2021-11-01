@@ -1,0 +1,86 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/collectives/device/prims_simple.h b/src/collectives/device/prims_simple.h
+index 9238d63..b35d8bc 100644
+--- a/src/collectives/device/prims_simple.h
++++ b/src/collectives/device/prims_simple.h
+@@ -4,6 +4,10 @@
+  * See LICENSE.txt for license information
+  ************************************************************************/
+ 
++#if defined(ENABLE_NPKIT)
++#include "npkit/npkit.h"
++#endif
++
+ template<typename T, typename RedOp, typename Fan, int Direct,
+          int SlicePerChunk, int StepPerSlice, int Unroll>
+ class Primitives<
+@@ -158,19 +162,67 @@ class Primitives<
+         if (DirectRecv && ncclShmem.groups[group].srcs[0] == ncclShmem.groups[group].dsts[0]) {
+           // We can only have one direct receive. Since srcs[0] == dstPtr+offset, skip one copy
+           if (Send) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
++#if defined(ENABLE_NPKIT_THREAD_SPLIT_SECOND_HALF)
++            if (threadIdx.x != 0 && tid == 0) {
++#else
++            if (threadIdx.x == 0) {
++#endif
++              NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
++                  &(ncclShmem.channel.npKitEvent), ncclShmem.channel.gpuNpKitEventCollectContext);
++            }
++#endif
++
+             // (1-Send) is only there to avoid compilation errors in case MaxSend=0 (and Send=0).
+             ReduceOrCopyMulti<Unroll, RedOp, T, 1, 1, 1, (1-Send)+MaxSend>
+               (tid, nworkers, redOp, false, false,
+                1, (T const**)ncclShmem.groups[group].srcs,
+                fan.nsend(), (T**)ncclShmem.groups[group].dsts+1,
+                sliceSize);
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
++#if defined(ENABLE_NPKIT_THREAD_SPLIT_SECOND_HALF)
++            if (threadIdx.x != 0 && tid == 0) {
++#else
++            if (threadIdx.x == 0) {
++#endif
++              NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
++                  &(ncclShmem.channel.npKitEvent), ncclShmem.channel.gpuNpKitEventCollectContext);
++            }
++#endif
++
+           }
+         } else {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
++#if defined(ENABLE_NPKIT_THREAD_SPLIT_SECOND_HALF)
++          if (threadIdx.x != 0 && tid == 0) {
++#else
++          if (threadIdx.x == 0) {
++#endif
++            NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
++                &(ncclShmem.channel.npKitEvent), ncclShmem.channel.gpuNpKitEventCollectContext);
++          }
++#endif
++
+           ReduceOrCopyMulti<Unroll, RedOp, T, Recv+Src, Recv*MaxRecv+Src, Send+Dst, Send*MaxSend+Dst>
+             (tid, nworkers, redOp, SrcBuf==Input, postOp,
+              Recv*fan.nrecv()+Src, (T const**)ncclShmem.groups[group].srcs,
+              Send*fan.nsend()+Dst, (T**)ncclShmem.groups[group].dsts,
+              sliceSize);
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
++#if defined(ENABLE_NPKIT_THREAD_SPLIT_SECOND_HALF)
++          if (threadIdx.x != 0 && tid == 0) {
++#else
++          if (threadIdx.x == 0) {
++#endif
++            NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
++                &(ncclShmem.channel.npKitEvent), ncclShmem.channel.gpuNpKitEventCollectContext);
++          }
++#endif
++
+         }
+         barrier(); // This barrier has a counterpart in following loop
+         if (Send && (flags & RolePostSend) && index == 0) __threadfence_system();
