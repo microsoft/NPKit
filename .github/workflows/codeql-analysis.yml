@@ -22,7 +22,9 @@ on:
 jobs:
   analyze-nccl-7e51592:
     name: CodeQL analyze NCCL 2.10.3-1
-    runs-on: nvcr.io/nvidia/pytorch:20.12-py3
+    runs-on: ubuntu-latest
+    container:
+      image: nvcr.io/nvidia/pytorch:20.12-py3
     permissions:
       actions: read
       contents: read
@@ -45,7 +47,9 @@ jobs:
       uses: github/codeql-action/analyze@v1
   analyze-rccl-4643a17:
     name: CodeQL analyze RCCL develop 4643a17
-    runs-on: rocm/pytorch:rocm4.2_ubuntu18.04_py3.6_pytorch_1.7.0
+    runs-on: ubuntu-latest
+    container:
+      image: rocm/pytorch:rocm4.2_ubuntu18.04_py3.6_pytorch_1.7.0
     permissions:
       actions: read
       contents: read
