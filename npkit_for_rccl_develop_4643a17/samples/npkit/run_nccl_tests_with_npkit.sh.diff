@@ -6,7 +6,7 @@ new file mode 100644
 index 0000000..10b4374
 --- /dev/null
 +++ b/samples/npkit/run_nccl_tests_with_npkit.sh
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,111 @@
 +set -x
 +
 +# Function that runs nccl-tests and collect NPKit traces.
