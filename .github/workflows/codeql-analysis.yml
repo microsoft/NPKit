@@ -67,6 +67,9 @@ jobs:
        cd rccl-develop-4643a17
        git checkout 4643a17
        find ../npkit_for_rccl_develop_4643a17/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
+       mkdir build
+       cd build
+       CXX=/opt/rocm/bin/hipcc cmake ..
        make NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_ENTRY -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
