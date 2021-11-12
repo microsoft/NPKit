@@ -20,7 +20,7 @@ on:
     - cron: '25 20 * * 2'
 
 jobs:
-  analyze-nccl-7e51592:
+  analyze-nccl-latest:
     name: CodeQL analyze NCCL 2.10.3-1
     runs-on: ubuntu-latest
     container:
@@ -45,11 +45,11 @@ jobs:
        make -j4 src.build NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80" NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_ENTRY -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
-  analyze-rccl-4643a17:
+  analyze-rccl-latest:
     name: CodeQL analyze RCCL develop 4643a17
     runs-on: ubuntu-latest
     container:
-      image: rocm/pytorch:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.7.0
+      image: rocm/dev-ubuntu-18.04:4.5-complete
     permissions:
       actions: read
       contents: read
@@ -63,6 +63,7 @@ jobs:
         languages: cpp
     - name: Build
       run: |
+       sudo apt install git -y
        git clone https://github.com/rocmsoftwareplatform/rccl rccl-develop-4643a17
        cd rccl-develop-4643a17
        git checkout 4643a17
