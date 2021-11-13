@@ -49,7 +49,7 @@ jobs:
     name: CodeQL analyze NPKit for RCCL
     runs-on: ubuntu-latest
     container:
-      image: rocm/dev-ubuntu-18.04:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.7.0
+      image: rocm/pytorch:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.7.0
     permissions:
       actions: read
       contents: read
