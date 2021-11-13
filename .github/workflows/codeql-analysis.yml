@@ -21,7 +21,7 @@ on:
 
 jobs:
   analyze-nccl-latest:
-    name: CodeQL analyze NCCL 2.10.3-1
+    name: CodeQL analyze NPKit for NCCL
     runs-on: ubuntu-latest
     container:
       image: nvcr.io/nvidia/pytorch:20.12-py3
@@ -46,10 +46,10 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
   analyze-rccl-latest:
-    name: CodeQL analyze RCCL develop 4643a17
+    name: CodeQL analyze NPKit for RCCL
     runs-on: ubuntu-latest
     container:
-      image: rocm/dev-ubuntu-18.04:4.5-complete
+      image: rocm/dev-ubuntu-18.04:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.7.0
     permissions:
       actions: read
       contents: read
@@ -63,7 +63,6 @@ jobs:
         languages: cpp
     - name: Build
       run: |
-       sudo apt install git -y
        git clone https://github.com/rocmsoftwareplatform/rccl rccl-develop-4643a17
        cd rccl-develop-4643a17
        git checkout 4643a17
