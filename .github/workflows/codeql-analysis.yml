@@ -1,0 +1,76 @@
+# For most projects, this workflow file will not need changing; you simply need
+# to commit it to your repository.
+#
+# You may wish to alter this file to override the set of languages analyzed,
+# or to provide custom queries or build logic.
+#
+# ******** NOTE ********
+# We have attempted to detect the languages in your repository. Please check
+# the `language` matrix defined below to confirm you have the correct set of
+# supported CodeQL languages.
+#
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '25 20 * * 2'
+
+jobs:
+  analyze-nccl-latest:
+    name: CodeQL analyze NPKit for NCCL
+    runs-on: ubuntu-latest
+    container:
+      image: nvcr.io/nvidia/pytorch:20.12-py3
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: cpp
+    - name: Build
+      run: |
+       git clone https://github.com/nvidia/nccl nccl-v2.10.3-1
+       cd nccl-v2.10.3-1
+       git checkout 7e51592
+       find ../npkit_for_nccl_v2.10.3-1/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
+       make -j4 src.build NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80" NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_ENTRY -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+  # Disable CodeQL for RCCL now because it suffers exit code 137.
+  # analyze-rccl-latest:
+  #   name: CodeQL analyze NPKit for RCCL
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: rocm/pytorch:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.7.0
+  #   permissions:
+  #     actions: read
+  #     contents: read
+  #     security-events: write
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v2
+  #   - name: Initialize CodeQL
+  #     uses: github/codeql-action/init@v1
+  #     with:
+  #       languages: cpp
+  #   - name: Build
+  #     run: |
+  #      git clone https://github.com/rocmsoftwareplatform/rccl rccl-develop-4643a17
+  #      cd rccl-develop-4643a17
+  #      git checkout 4643a17
+  #      find ../npkit_for_rccl_develop_4643a17/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
+  #      mkdir build
+  #      cd build
+  #      CXX=/opt/rocm/bin/hipcc cmake -DNPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_ENTRY -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT" ..
+  #      make -j4
+  #   - name: Perform CodeQL Analysis
+  #     uses: github/codeql-action/analyze@v1
