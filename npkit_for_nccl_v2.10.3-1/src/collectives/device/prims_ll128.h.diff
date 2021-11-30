@@ -242,13 +242,13 @@ index 439072e..68e1f63 100644
 +    }
 +#endif
 +    GenericOp<1, 0, -1, Output>(-1, outIx, eltN, postOp);
-+#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_NPKIT_EVENT_RECV_EXIT)
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_EXIT)
 +#if defined(ENABLE_NPKIT_THREAD_SPLIT_SECOND_HALF)
 +    if (threadIdx.x != 0 && tid == 0) {
 +#else
 +    if (threadIdx.x == 0) {
 +#endif
-+      NpKit::GenerateAndCollectGpuEvent(NPKIT_NPKIT_EVENT_RECV_EXIT, eltN*sizeof(T), 0, clock64(),
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_EXIT, eltN*sizeof(T), 0, clock64(),
 +          &(ncclShmem.channel.npKitEvent), ncclShmem.channel.gpuNpKitEventCollectContext);
 +    }
 +#endif
