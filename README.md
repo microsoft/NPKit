@@ -6,7 +6,7 @@ NPKit is easy to use. It's designed to be run with all kinds of NCCL/RCCL worklo
 
 NPKit is lightweight. During each run, users can choose to only enable profiling events they care about to minimize overhead caused by NPKit.
 
-Below is an example of NPKit timeline result. Green blocks are LL128 data transfer time in GPU, and each line represents a NCCL/RCCL channel (thread block). Red/purple blocks are net send/recv times in CPU.
+Below is an example of NPKit timeline result. Green blocks are LL128 data transfer times in GPU, and each line represents a NCCL/RCCL channel (thread block). Red/purple blocks are net send/recv times in CPU. Each block contains other attributes, including data size, channel ID, etc.
 
 ![NPKit Result Example](./npkit_result_example.png)
 
