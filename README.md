@@ -6,6 +6,10 @@ NPKit is easy to use. It's designed to be run with all kinds of NCCL/RCCL worklo
 
 NPKit is lightweight. During each run, users can choose to only enable profiling events they care about to minimize overhead caused by NPKit.
 
+Below is an example of NPKit timeline result. Green blocks are LL128 data transfer time in GPU, red blocks are net send times in CPU, and purple blocks are net recv times in CPU.
+
+![NPKit Result Example](./npkit_result_example.png)
+
 ## Build
 
 NPKit is a patches series of some version of NCCL/RCCL. Users need to apply these patches to correct NCCL/RCCL version and build NCCL/RCCL with expected profiling events specified. In this section, we take NCCL 2.10.3-1 and RCCL develop branch commit 4643a17 as examples. Assume we want to jointly profile LL128 data transfer time in GPU and net send/recv time in CPU:
