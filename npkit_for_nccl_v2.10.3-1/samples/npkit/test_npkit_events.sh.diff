@@ -3,7 +3,7 @@ Licensed under the MIT License.
 
 diff --git a/samples/npkit/test_npkit_events.sh b/samples/npkit/test_npkit_events.sh
 new file mode 100644
-index 0000000..09849e5
+index 0000000..9182251
 --- /dev/null
 +++ b/samples/npkit/test_npkit_events.sh
 @@ -0,0 +1,51 @@
@@ -11,8 +11,8 @@ index 0000000..09849e5
 +
 +NPKIT_FLAGS_CPU_PREFIX="-DENABLE_NPKIT"
 +NPKIT_FLAGS_GPU_PREFIX="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU"
-+NPKIT_NCCL_TEST_BIN_ALLREDUCE="/nccl-tests/build/all_reduce_perf"
-+NPKIT_NCCL_TEST_BIN_ALLTOALL="/nccl-tests/build/alltoall_perf"
++NPKIT_NCCL_TEST_BIN_ALLREDUCE="/nccl-tests-master/build/all_reduce_perf"
++NPKIT_NCCL_TEST_BIN_ALLTOALL="/nccl-tests-master/build/alltoall_perf"
 +
 +export NPKIT_NCCL_TEST_BIN=${NPKIT_NCCL_TEST_BIN_ALLREDUCE}
 +# export NPKIT_NCCL_TEST_BIN=${NPKIT_NCCL_TEST_BIN_ALLTOALL}

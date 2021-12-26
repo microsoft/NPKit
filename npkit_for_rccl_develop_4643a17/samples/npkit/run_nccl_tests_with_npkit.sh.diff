@@ -3,7 +3,7 @@ Licensed under the MIT License.
 
 diff --git a/samples/npkit/run_nccl_tests_with_npkit.sh b/samples/npkit/run_nccl_tests_with_npkit.sh
 new file mode 100644
-index 0000000..10b4374
+index 0000000..af1ab92
 --- /dev/null
 +++ b/samples/npkit/run_nccl_tests_with_npkit.sh
 @@ -0,0 +1,111 @@
@@ -49,7 +49,7 @@ index 0000000..10b4374
 +npkit_run_dir="${NPKIT_RUN_DIR:-/mnt/npkit_run}"
 +
 +# Path to nccl-tests binary being profiled.
-+nccl_test_bin="${NPKIT_NCCL_TEST_BIN:-/nccl-tests/build/all_reduce_perf}"
++nccl_test_bin="${NPKIT_NCCL_TEST_BIN:-/nccl-tests-master/build/all_reduce_perf}"
 +
 +# Message size of NCCL operation.
 +msg_size="${NPKIT_NCCL_MSG_SIZE:-16M}"
