@@ -45,6 +45,31 @@ jobs:
        make -j4 src.build NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80" NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_ENTRY -DENABLE_NPKIT_EVENT_ALL_REDUCE_RING_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+  analyze-msccl-latest:
+    name: CodeQL analyze NPKit for MSCCL
+    runs-on: ubuntu-latest
+    container:
+      image: nvcr.io/nvidia/pytorch:20.12-py3
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: cpp
+    - name: Build
+      run: |
+       git clone https://github.com/microsoft/msccl msccl-master-e52c525
+       cd msccl-master-e52c525
+       git checkout e52c525
+       find ../npkit_for_msccl-master-e52c525/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
+       make -j4 src.build NVCC_GENCODE="-gencode=arch=compute_80,code=sm_80" NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_SCCL_ENTRY -DENABLE_NPKIT_EVENT_SCCL_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
   # Disable CodeQL for RCCL now because it suffers exit code 137.
   # analyze-rccl-latest:
   #   name: CodeQL analyze NPKit for RCCL
