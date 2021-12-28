@@ -33,7 +33,7 @@ Build NPKit for RCCL develop branch 4643a17:
         $ CXX=/opt/rocm/bin/hipcc cmake -DNPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT" ..
         $ make -j
 
-Build NPKit for MSCCL develop branch e52c525:
+Build NPKit for MSCCL master branch e52c525:
 
         $ git clone https://github.com/microsoft/msccl msccl-master-e52c525
         $ cd msccl-master-e52c525
