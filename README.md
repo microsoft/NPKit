@@ -1,6 +1,6 @@
 ## Introduction
 
-NPKit (NCCL Profiling Kit) is a joint profiler framework for NCCL/RCCL/MSCCL. It enables users to insert customized profiling events into different NCCL/RCCL/MSCCL components, especially into giant NCCL/RCCL/MSCCL GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand NCCL/RCCL/MSCCL's workflow and performance.
+NPKit (NCCL Profiling Kit) is a joint profiler framework for [NVIDIA NCCL](https://github.com/NVIDIA/nccl), [AMD RCCL](https://github.com/ROCmSoftwarePlatform/rccl/) and [Microsoft MSCCL](https://github.com/microsoft/msccl/). It enables users to insert customized profiling events into different NCCL/RCCL/MSCCL components, especially into giant NCCL/RCCL/MSCCL GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand NCCL/RCCL/MSCCL's workflow and performance.
 
 NPKit is easy to use. It's designed to be run with all kinds of NCCL/RCCL/MSCCL workloads. Users only need to insert their profiling events into NCCL/RCCL/MSCCL, replace existing NCCL/RCCL/MSCCL with NPKit-enabled version, run their workload that leverages NCCL/RCCL/MSCCL, and the unified timeline with profiling events are automatically generated.
 
