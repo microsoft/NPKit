@@ -1,0 +1,312 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/collectives/device/primitives.h b/src/collectives/device/primitives.h
+index 6374408..56fe3b4 100644
+--- a/src/collectives/device/primitives.h
++++ b/src/collectives/device/primitives.h
+@@ -10,6 +10,9 @@
+ #include <type_traits>
+ #include "reduce_kernel.h" // for reduction funcs
+ #include "common.h"
++#if defined(ENABLE_NPKIT)
++#include "npkit/npkit.h"
++#endif
+ 
+ #define SPINS_BEFORE_CHECK_ABORT 1000000
+ 
+@@ -63,6 +66,7 @@ class ncclPrimitives {
+   uint64_t step;
+   T* direct = NULL;
+   T* buff;
++  struct ncclChannel* channel;
+   struct ncclDevComm* comm;
+ 
+   const T** srcs;
+@@ -152,10 +156,42 @@ class ncclPrimitives {
+             // We can only have one direct receive. Since srcs[0] == dstPtr+offset, skip one copy
+             if (SEND) {
+               // (1-SEND) is only there to avoid compilation errors in case NSEND=0 (and SEND=0).
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
++              if (threadIdx.x == 0) {
++                NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
++i                    &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++              }
++#endif
++
+               ReduceOrCopyMulti<UNROLL, FUNC, T, 1, 1, 1, (1-SEND)+NSEND>(tid, nworkers, 1, srcs, nsend, dsts+1, realSize);
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
++              if (threadIdx.x == 0) {
++                NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
++i                    &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++              }
++#endif
++
+             }
+           } else {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
++            if (threadIdx.x == 0) {
++              NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
++i                  &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++            }
++#endif
++
+             ReduceOrCopyMulti<UNROLL, FUNC, T, RECV+SRC, RECV*NRECV+SRC, SEND+DST, SEND*NSEND+DST>(tid, nworkers, RECV*nrecv+SRC, srcs, SEND*nsend+DST, dsts, realSize);
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
++            if (threadIdx.x == 0) {
++              NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
++i                  &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++            }
++#endif
++
+           }
+         }
+       }
+@@ -224,7 +260,7 @@ class ncclPrimitives {
+  public:
+   __device__ __forceinline__
+   ncclPrimitives(const int tid, const int nworkers, int* recvPeers, int* sendPeers, T* directBuff, int stepSize, struct ncclChannel* channel, struct ncclDevComm* comm, struct ncclShmemPtrs* ptrs, int group)
+-    : comm(comm), tid(tid), nworkers(nworkers), stepSize(stepSize), srcs((const T**)ptrs[group].srcs), dsts((T**)ptrs[group].dsts), group(group) {
++    : channel(channel), comm(comm), tid(tid), nworkers(nworkers), stepSize(stepSize), srcs((const T**)ptrs[group].srcs), dsts((T**)ptrs[group].dsts), group(group) {
+     nthreads = nworkers;
+     // For send operations, we need an extra warp to overlap the threadfence and the copy
+     int postThreads = NSEND && nworkers >= 64 ? WARP_SIZE : 0;
+@@ -264,66 +300,234 @@ class ncclPrimitives {
+ 
+   __device__ __forceinline__ void
+   send(const T* src, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 0, 1, 1, 0>(src, NULL, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   directSend(const T* src, ssize_t directOffset, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 1, 0, 1, 1, 0>(src, NULL, nelem, directOffset);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+ 
+   __device__ __forceinline__ void
+   recv(T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 1, 0, 0, 1>(NULL, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   directRecv(T* dst, ssize_t directOffset, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_RECV_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_RECV_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<1, 0, 1, 0, 0, 1>(NULL, dst, nelem, directOffset);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_RECV_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_RECV_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+ 
+   __device__ __forceinline__ void
+   copySend(const T* src, T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_COPY_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_COPY_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 0, 1, 1, 1>(src, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_COPY_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_COPY_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   directCopySend(const T* src, T* dst, ssize_t directOffset, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_COPY_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_COPY_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 1, 0, 1, 1, 1>(src, dst, nelem, directOffset);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_COPY_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_COPY_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+ 
+   __device__ __forceinline__ void
+   recvCopySend(T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 1, 1, 0, 1>(NULL, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   directRecvCopySend(T* dst, ssize_t directOffset, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<1, 1, 1, 1, 0, 1>(NULL, dst, nelem, directOffset);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+ 
+   __device__ __forceinline__ void
+   recvReduceCopy(const T* src, T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 1, 0, 1, 1>(src, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+ 
+   __device__ __forceinline__ void
+   recvReduceSend(const T* src, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 1, 1, 1, 0>(src, NULL, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+ 
+   __device__ __forceinline__ void
+   recvReduceCopySend(const T* src, T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 1, 1, 1, 1>(src, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   directRecvReduceCopySend(const T* src, T* dst, ssize_t directOffset, int nelem) {
+     // Direct is only for the send part
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_RECV_REDUCE_COPY_SEND_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_RECV_REDUCE_COPY_SEND_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 1, 1, 1, 1, 1>(src, dst, nelem, directOffset);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_DIRECT_RECV_REDUCE_COPY_SEND_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_DIRECT_RECV_REDUCE_COPY_SEND_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   localCopy(const T* src, T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_LOCAL_COPY_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_LOCAL_COPY_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 0, 0, 1, 1>(src, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_LOCAL_COPY_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_LOCAL_COPY_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }
+   __device__ __forceinline__ void
+   reduce(const T* src, T* dst, int nelem) {
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_REDUCE_ENTRY)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_REDUCE_ENTRY, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+     GenericOp<0, 0, 0, 0, 2, 1>(src, dst, nelem, 0);
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_REDUCE_EXIT)
++    if (threadIdx.x == 0) {
++      NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_REDUCE_EXIT, nelem*sizeof(T), 0, clock64(),
++          &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++    }
++#endif
+   }  
+ 
+   __device__ __forceinline__ ~ncclPrimitives() {

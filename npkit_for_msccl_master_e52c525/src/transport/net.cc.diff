@@ -1,0 +1,89 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/transport/net.cc b/src/transport/net.cc
+index 86c43f8..097514b 100644
+--- a/src/transport/net.cc
++++ b/src/transport/net.cc
+@@ -8,6 +8,9 @@
+ #include "net.h"
+ #include "graph.h"
+ #include "collectives.h"
++#if defined(ENABLE_NPKIT)
++#include "npkit/npkit.h"
++#endif
+ 
+ struct netConnectInfo {
+   ncclNetHandle_t netHandle;
+@@ -291,6 +294,11 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+       if (sizesFifo[buffSlot] != -1 && (*recvTail > args->transmitted || args->protocol == NCCL_PROTO_LL)) {
+         // We have something to receive, let's check if it's completely ready.
+         int size = sizesFifo[buffSlot];
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
++        args->npKitSizesFifo[buffSlot] = size;
++#endif
++
+         char* buff = resources->shared ? (char*)resources->recvMem->ptrsFifo[buffSlot] : localBuff+buffSlot*stepSize;
+         int ready = 1;
+         if (args->protocol == NCCL_PROTO_LL128) {
+@@ -320,6 +328,14 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+           // Data is ready, try to send.
+           NCCLCHECK(ncclNetIsend(resources->netSendComm, buff, size, mhandle, args->requests+buffSlot));
+           if (args->requests[buffSlot] != NULL) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
++            NpKit::GenerateAndCollectCpuEvent(
++                NPKIT_EVENT_NET_SEND_ENTRY, size, uint64_t(args->requests+buffSlot)/sizeof(void*),
++                *(volatile uint64_t*)NpKit::GetCpuTimeStamp(),
++                &(args->channel->npKitEvent), args->channel->cpuNpKitEventCollectContext);
++#endif
++
+             TRACE(NCCL_NET, "sendProxy [%d/%d] Isend (LL) posted, req %p", args->transmitted, buffSlot, args->requests[buffSlot]);
+             sizesFifo[buffSlot] = -1;
+             // Make sure size is reset to zero before we update the head.
+@@ -337,6 +353,14 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+       int buffSlot = args->done%NCCL_STEPS;
+       NCCLCHECK(ncclNetTest(args->requests[buffSlot], &done, NULL));
+       if (done) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
++        NpKit::GenerateAndCollectCpuEvent(
++            NPKIT_EVENT_NET_SEND_EXIT, args->npKitSizesFifo[buffSlot], uint64_t(args->requests+buffSlot)/sizeof(void*),
++            *(volatile uint64_t*)NpKit::GetCpuTimeStamp(),
++            &(args->channel->npKitEvent), args->channel->cpuNpKitEventCollectContext);
++#endif
++
+         TRACE(NCCL_NET, "sendProxy [%d/%d] request %p done, size %d", args->done, buffSlot, args->requests[buffSlot]);
+         if (resources->shared) {
+           char* ptr = (char*)resources->recvMem->ptrsFifo[args->done%NCCL_STEPS];
+@@ -390,6 +414,14 @@ ncclResult_t netRecvProxy(struct ncclProxyArgs* args) {
+       }
+       NCCLCHECK(ncclNetIrecv(resources->netRecvComm, ptr, buffSize, mhandle, args->requests+buffSlot));
+       if (args->requests[buffSlot] != NULL) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_RECV_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_RECV_EXIT)
++        NpKit::GenerateAndCollectCpuEvent(
++            NPKIT_EVENT_NET_RECV_ENTRY, buffSize, uint64_t(args->requests+buffSlot)/sizeof(void*),
++            *(volatile uint64_t*)NpKit::GetCpuTimeStamp(),
++            &(args->channel->npKitEvent), args->channel->cpuNpKitEventCollectContext);
++#endif
++
+         TRACE(NCCL_NET, "recvProxy [%d/%d] posted recv request %p", args->posted, buffSlot, args->requests[buffSlot]);
+         args->posted += args->sliceSteps;
+         args->idle = 0;
+@@ -403,6 +435,14 @@ ncclResult_t netRecvProxy(struct ncclProxyArgs* args) {
+       int done, size;
+       NCCLCHECK(ncclNetTest(args->requests[buffSlot], &done, &size));
+       if (done) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_RECV_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_RECV_EXIT)
++        NpKit::GenerateAndCollectCpuEvent(
++            NPKIT_EVENT_NET_RECV_EXIT, size, uint64_t(args->requests+buffSlot)/sizeof(void*),
++            *(volatile uint64_t*)NpKit::GetCpuTimeStamp(),
++            &(args->channel->npKitEvent), args->channel->cpuNpKitEventCollectContext);
++#endif
++
+         args->received += args->sliceSteps;
+         if (size > 0 && args->protocol == NCCL_PROTO_SIMPLE && resources->useGdr) {
+           // Don't pass data to the GPU yet, flush first.

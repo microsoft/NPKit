@@ -1,18 +1,18 @@
 ## Introduction
 
-NPKit (NCCL Profiling Kit) is a joint profiler framework for NCCL/RCCL. It enables users to insert customized profiling events into different NCCL/RCCL components, especially into giant NCCL/RCCL GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand NCCL/RCCL's workflow and performance.
+NPKit (NCCL Profiling Kit) is a joint profiler framework for NCCL/RCCL/MSCCL. It enables users to insert customized profiling events into different NCCL/RCCL/MSCCL components, especially into giant NCCL/RCCL/MSCCL GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand NCCL/RCCL/MSCCL's workflow and performance.
 
-NPKit is easy to use. It's designed to be run with all kinds of NCCL/RCCL workloads. Users only need to insert their profiling events into NCCL/RCCL, replace existing NCCL/RCCL with NPKit-enabled version, run their workload that leverages NCCL/RCCL, and the unified timeline with profiling events are automatically generated.
+NPKit is easy to use. It's designed to be run with all kinds of NCCL/RCCL/MSCCL workloads. Users only need to insert their profiling events into NCCL/RCCL/MSCCL, replace existing NCCL/RCCL/MSCCL with NPKit-enabled version, run their workload that leverages NCCL/RCCL/MSCCL, and the unified timeline with profiling events are automatically generated.
 
 NPKit is lightweight. During each run, users can choose to only enable profiling events they care about to minimize overhead caused by NPKit.
 
-Below is an example of NPKit timeline result. Green blocks are LL128 data transfer times in GPU, and each line represents a NCCL/RCCL channel (thread block). Red/purple blocks are net send/recv times in CPU. Each block contains other attributes, including data size, channel ID, etc.
+Below is an example of NPKit timeline result. Green blocks are LL128 data transfer times in GPU, and each line represents a NCCL/RCCL/MSCCL channel (thread block). Red/purple blocks are net send/recv times in CPU. Each block contains other attributes, including data size, channel ID, etc.
 
 ![NPKit Result Example](./npkit_result_example.png)
 
 ## Build
 
-NPKit is a patches series of some version of NCCL/RCCL. Users need to apply these patches to correct NCCL/RCCL version and build NCCL/RCCL with expected profiling events specified. In this section, we take NCCL 2.10.3-1 and RCCL develop branch commit 4643a17 as examples. Assume we want to jointly profile LL128 data transfer time in GPU and net send/recv time in CPU:
+NPKit is a patches series of some version of NCCL/RCCL/MSCCL. Users need to apply these patches to correct NCCL/RCCL/MSCCL version and build NCCL/RCCL/MSCCL with expected profiling events specified. In this section, we take NCCL 2.10.3-1, RCCL develop branch commit 4643a17 and MSCCL master branch commit e52c525 as examples. Assume we want to jointly profile LL128 data transfer time in GPU and net send/recv time in CPU:
 
 Build NPKit for NCCL v2.10.3-1:
 
@@ -32,6 +32,14 @@ Build NPKit for RCCL develop branch 4643a17:
         $ cd build
         $ CXX=/opt/rocm/bin/hipcc cmake -DNPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT" ..
         $ make -j
+
+Build NPKit for MSCCL develop branch e52c525:
+
+        $ git clone https://github.com/microsoft/msccl msccl-master-e52c525
+        $ cd msccl-master-e52c525
+        $ git checkout e52c525
+        $ find ../npkit_for_msccl-master-e52c525/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
+        $ make -j src.build NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
 
 Note that we use a series of `ENABLE_NPKIT*` flags. NPKit predefined flags can be found at `src/include/npkit/npkit_event.h`. In this example,
 
