@@ -2,7 +2,7 @@ Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
 
 diff --git a/src/collectives/device/primitives.h b/src/collectives/device/primitives.h
-index 6374408..56fe3b4 100644
+index 6374408..254f341 100644
 --- a/src/collectives/device/primitives.h
 +++ b/src/collectives/device/primitives.h
 @@ -10,6 +10,9 @@
@@ -31,7 +31,7 @@ index 6374408..56fe3b4 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
 +              if (threadIdx.x == 0) {
 +                NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
-+i                    &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++                    &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
 +              }
 +#endif
 +
@@ -40,7 +40,7 @@ index 6374408..56fe3b4 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
 +              if (threadIdx.x == 0) {
 +                NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
-+i                    &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++                    &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
 +              }
 +#endif
 +
@@ -50,7 +50,7 @@ index 6374408..56fe3b4 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY)
 +            if (threadIdx.x == 0) {
 +              NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_ENTRY, sliceSize*sizeof(T), 0, clock64(),
-+i                  &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++                  &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
 +            }
 +#endif
 +
@@ -59,7 +59,7 @@ index 6374408..56fe3b4 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT)
 +            if (threadIdx.x == 0) {
 +              NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_PRIM_SIMPLE_REDUCE_OR_COPY_MULTI_EXIT, sliceSize*sizeof(T), 0, clock64(),
-+i                  &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++                  &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
 +            }
 +#endif
 +

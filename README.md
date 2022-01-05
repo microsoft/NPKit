@@ -38,7 +38,7 @@ Build NPKit for MSCCL master branch e52c525:
         $ git clone https://github.com/microsoft/msccl msccl-master-e52c525
         $ cd msccl-master-e52c525
         $ git checkout e52c525
-        $ find ../npkit_for_msccl-master-e52c525/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
+        $ find ../npkit_for_msccl_master_e52c525/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
         $ make -j src.build NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
 
 Note that we use a series of `ENABLE_NPKIT*` flags. NPKit predefined flags can be found at `src/include/npkit/npkit_event.h`. In this example,
