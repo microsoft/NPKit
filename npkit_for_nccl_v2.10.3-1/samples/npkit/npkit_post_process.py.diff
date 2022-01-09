@@ -3,10 +3,10 @@ Licensed under the MIT License.
 
 diff --git a/samples/npkit/npkit_post_process.py b/samples/npkit/npkit_post_process.py
 new file mode 100644
-index 0000000..9a9e06e
+index 0000000..e30fe17
 --- /dev/null
 +++ b/samples/npkit/npkit_post_process.py
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,215 @@
 +import argparse
 +import os
 +import json
@@ -57,8 +57,8 @@ index 0000000..9a9e06e
 +        'timestamp': int.from_bytes(event_bytes[8:16], byteorder='little', signed=False)
 +    }
 +
-+def parse_gpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, gpu_clock_scale, cpu_clock_scale, num_kernel_runs, num_kernel_runs_to_sample):
-+    gpu_event_file_path = os.path.join(npkit_dump_dir, 'gpu_events_rank_%d_channel_%d' % (rank, channel))
++def parse_gpu_event_file(npkit_dump_dir, npkit_event_def, rank, buf_idx, gpu_clock_scale, cpu_clock_scale):
++    gpu_event_file_path = os.path.join(npkit_dump_dir, 'gpu_events_rank_%d_buf_%d' % (rank, buf_idx))
 +    raw_event_size = 16
 +    curr_cpu_base_time = None
 +    curr_gpu_base_time = None
@@ -66,10 +66,8 @@ index 0000000..9a9e06e
 +    event_type_to_seq = {}
 +    with open(gpu_event_file_path, 'rb') as f:
 +        raw_content = f.read()
-+        raw_content = raw_content[-len(raw_content) * num_kernel_runs_to_sample // num_kernel_runs:]
 +        raw_content_size = len(raw_content)
 +        raw_content_idx = 0
-+        gpu_stage_durations = []
 +        while raw_content_idx < raw_content_size:
 +            parsed_gpu_event = parse_gpu_event(raw_content[raw_content_idx : raw_content_idx + raw_event_size])
 +            if npkit_event_def['id_to_type'][parsed_gpu_event['id']] == 'NPKIT_EVENT_TIME_SYNC_CPU':
@@ -87,7 +85,7 @@ index 0000000..9a9e06e
 +                    'ph': phase,
 +                    'ts': curr_cpu_base_time + parsed_gpu_event['timestamp'] / gpu_clock_scale - curr_gpu_base_time,
 +                    'pid': rank,
-+                    'tid': channel
++                    'tid': buf_idx + 1
 +                })
 +                if phase == 'B':
 +                    if event_type not in event_type_to_seq:
@@ -97,8 +95,10 @@ index 0000000..9a9e06e
 +                        'cat': 'GPU',
 +                        'args': {
 +                            'rank': rank,
-+                            'channel': channel,
-+                            'seq': event_type_to_seq[event_type]
++                            'buf_idx': buf_idx,
++                            'seq': event_type_to_seq[event_type],
++                            'rsvd_0': parsed_gpu_event['rsvd'],
++                            'size_0': parsed_gpu_event['size']
 +                        }
 +                    })
 +                    event_type_to_seq[event_type] += 1
@@ -106,15 +106,10 @@ index 0000000..9a9e06e
 +                    gpu_events[-1]['args'] = {'size': parsed_gpu_event['size'], 'rsvd': parsed_gpu_event['rsvd']}
 +                    delta_time = gpu_events[-1]['ts'] - gpu_events[-2]['ts']
 +                    gpu_events[-1]['args']['bw (GB/s)'] = gpu_events[-1]['args']['size'] / delta_time / 1e3
-+                    gpu_stage_durations.append(delta_time)
 +            raw_content_idx += raw_event_size
-+        num_stages = len(gpu_stage_durations) // num_kernel_runs_to_sample
-+        gpu_stage_durations_avg = [0.] * num_stages
-+        for idx, duration in enumerate(gpu_stage_durations):
-+            gpu_stage_durations_avg[idx % num_stages] += duration / num_kernel_runs_to_sample
-+    return gpu_events, gpu_stage_durations_avg
++    return gpu_events
 +
-+def parse_cpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, cpu_clock_scale, num_kernel_runs, num_kernel_runs_to_sample):
++def parse_cpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, cpu_clock_scale):
 +    cpu_event_file_path = os.path.join(npkit_dump_dir, 'cpu_events_rank_%d_channel_%d' % (rank, channel))
 +    raw_event_size = 16
 +    cpu_events = []
@@ -123,14 +118,12 @@ index 0000000..9a9e06e
 +    fiber_is_usable = []
 +    fiber_open_ts = []
 +    slot_to_fiber_id = {}
-+    channel_shift = 100
++    channel_shift = 1000
 +
 +    with open(cpu_event_file_path, 'rb') as f:
 +        raw_content = f.read()
-+        raw_content = raw_content[-len(raw_content) * num_kernel_runs_to_sample // num_kernel_runs:]
 +        raw_content_size = len(raw_content)
 +        raw_content_idx = 0
-+        cpu_stage_durations = []
 +        while raw_content_idx < raw_content_size:
 +            parsed_cpu_event = parse_cpu_event(raw_content[raw_content_idx : raw_content_idx + raw_event_size])
 +            event_type = npkit_event_def['id_to_type'][parsed_cpu_event['id']]
@@ -164,7 +157,8 @@ index 0000000..9a9e06e
 +                        'rank': rank,
 +                        'channel': channel,
 +                        'slot': parsed_cpu_event['slot'],
-+                        'seq': event_type_to_seq[event_type]
++                        'seq': event_type_to_seq[event_type],
++                        'size_0': parsed_cpu_event['size']
 +                    }
 +                })
 +                event_type_to_seq[event_type] += 1
@@ -179,27 +173,22 @@ index 0000000..9a9e06e
 +                cpu_events[-1]['args'] = {'size': parsed_cpu_event['size']}
 +                cpu_events[-1]['args']['bw (GB/s)'] = \
 +                cpu_events[-1]['args']['size'] / delta_time / 1e3
-+                cpu_stage_durations.append(delta_time)
 +
 +            cpu_events[-1]['tid'] = fiber_id + (channel + 1) * channel_shift
 +
 +            raw_content_idx += raw_event_size
-+        num_stages = len(cpu_stage_durations) // num_kernel_runs_to_sample
-+        cpu_stage_durations_avg = [0.] * num_stages
-+        for idx, duration in enumerate(cpu_stage_durations):
-+            cpu_stage_durations_avg[idx % num_stages] += duration / num_kernel_runs_to_sample
-+    return cpu_events, cpu_stage_durations_avg
++    return cpu_events
 +
-+def convert_npkit_dump_to_trace(npkit_dump_dir, output_dir, npkit_event_def, num_kernel_runs, num_kernel_runs_to_sample):
++def convert_npkit_dump_to_trace(npkit_dump_dir, output_dir, npkit_event_def):
 +    files_in_dump_dir = next(os.walk(npkit_dump_dir))[2]
 +    gpu_event_files = [x for x in files_in_dump_dir if x.startswith('gpu_events_rank_')]
++    cpu_event_files = [x for x in files_in_dump_dir if x.startswith('cpu_events_rank_')]
 +
 +    ranks = list(set([int(x.split('_rank_')[1].split('_')[0]) for x in gpu_event_files]))
-+    channels = list(set([int(x.split('_channel_')[1].split('_')[0]) for x in gpu_event_files]))
++    buf_indices = list(set([int(x.split('_buf_')[1].split('_')[0]) for x in gpu_event_files]))
++    channels = list(set([int(x.split('_channel_')[1].split('_')[0]) for x in cpu_event_files]))
 +
 +    trace = {'traceEvents': []}
-+    gpu_stage_durations_channels = {}
-+    cpu_stage_durations_channels = {}
 +
 +    for rank in ranks:
 +        cpu_clock_den_file_path = os.path.join(npkit_dump_dir, 'cpu_clock_period_den_rank_%d' % rank)
@@ -209,16 +198,13 @@ index 0000000..9a9e06e
 +        gpu_clock_file_path = os.path.join(npkit_dump_dir, 'gpu_clock_rate_rank_%d' % rank)
 +        gpu_clock_scale = parse_gpu_clock_scale(gpu_clock_file_path)
 +
-+        gpu_stage_durations_channels[rank] = {}
-+        cpu_stage_durations_channels[rank] = {}
++        for buf_idx in buf_indices:
++            gpu_events = parse_gpu_event_file(npkit_dump_dir, npkit_event_def, rank, buf_idx, gpu_clock_scale, cpu_clock_scale)
++            trace['traceEvents'].extend(gpu_events)
 +
 +        for channel in channels:
-+            gpu_events, gpu_stage_durations = parse_gpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, gpu_clock_scale, cpu_clock_scale, num_kernel_runs, num_kernel_runs_to_sample)
-+            trace['traceEvents'].extend(gpu_events)
-+            gpu_stage_durations_channels[rank][channel] = gpu_stage_durations
-+            cpu_events, cpu_stage_durations = parse_cpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, cpu_clock_scale, num_kernel_runs, num_kernel_runs_to_sample)
++            cpu_events = parse_cpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, cpu_clock_scale)
 +            trace['traceEvents'].extend(cpu_events)
-+            cpu_stage_durations_channels[rank][channel] = cpu_stage_durations
 +
 +    trace['traceEvents'].sort(key=lambda x : x['ts'])
 +    trace['displayTimeUnit'] = 'ns'
@@ -226,19 +212,13 @@ index 0000000..9a9e06e
 +    os.makedirs(output_dir, exist_ok=True)
 +    with open(os.path.join(output_dir, 'npkit_event_trace.json'), 'w') as f:
 +        json.dump(trace, f)
-+    with open(os.path.join(output_dir, 'gpu_stage_durations.json'), 'w') as f:
-+        json.dump(gpu_stage_durations_channels, f)
-+    with open(os.path.join(output_dir, 'cpu_stage_durations.json'), 'w') as f:
-+        json.dump(cpu_stage_durations_channels, f)
 +
 +if __name__ == '__main__':
 +    parser = argparse.ArgumentParser()
 +    parser.add_argument('--npkit_dump_dir', type=str, required=True, help='NPKit dump directory.')
 +    parser.add_argument('--npkit_event_header_path', type=str, required=True, help='Path to npkit_event.h.')
 +    parser.add_argument('--output_dir', type=str, required=True, help='Path to output directory.')
-+    parser.add_argument('--num_kernel_runs', type=int, required=True, help='Number of kernel runs.')
-+    parser.add_argument('--num_kernel_runs_to_sample', type=int, required=True, help='Last number of kernel runs to sample.')
 +    args = parser.parse_args()
 +
 +    npkit_event_def = parse_npkit_event_header(args.npkit_event_header_path)
-+    convert_npkit_dump_to_trace(args.npkit_dump_dir, args.output_dir, npkit_event_def, args.num_kernel_runs, args.num_kernel_runs_to_sample)
++    convert_npkit_dump_to_trace(args.npkit_dump_dir, args.output_dir, npkit_event_def)

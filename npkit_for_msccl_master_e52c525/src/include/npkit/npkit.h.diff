@@ -3,10 +3,10 @@ Licensed under the MIT License.
 
 diff --git a/src/include/npkit/npkit.h b/src/include/npkit/npkit.h
 new file mode 100644
-index 0000000..0c002c4
+index 0000000..06b0deb
 --- /dev/null
 +++ b/src/include/npkit/npkit.h
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,65 @@
 +#ifndef NPKIT_H_
 +#define NPKIT_H_
 +
@@ -15,13 +15,14 @@ index 0000000..0c002c4
 +
 +#include <cuda_runtime.h>
 +
-+#include "devcomm.h"
 +#include "npkit/npkit_event.h"
 +#include "npkit/npkit_struct.h"
 +
 +class NpKit {
 + public:
-+  static const uint64_t kMaxNumEventsCachedPerChannel = 128;
++  static const uint64_t kNumGpuEventBuffers = 512;
++
++  static const uint64_t kNumCpuEventBuffers = 32;
 +
 +  static ncclResult_t Init(int rank);
 +
@@ -29,60 +30,39 @@ index 0000000..0c002c4
 +
 +  static ncclResult_t Shutdown();
 +
-+  static NpKitEventCollectContext* GetGpuEventCollectContext(int channel);
++  static NpKitEventCollectContext* GetGpuEventCollectContexts();
 +
-+  static inline __device__ void GenerateGpuEvent(uint8_t type, uint32_t size,
-+                                                 uint32_t rsvd, uint64_t timestamp,
-+                                                 NpKitEvent* event) {
-+    event->fields.type = type;
-+    event->fields.size = size;
-+    event->fields.rsvd = rsvd;
-+    event->fields.timestamp = timestamp;
-+  }
-+
-+  static inline __device__ void CollectGpuEvent(const NpKitEvent& event,
-+                                                NpKitEventCollectContext* collect_context) {
-+    uint64_t event_buffer_head = collect_context->event_buffer_head;
-+    NpKitEvent* event_buffer = collect_context->event_buffer;
-+    if (event_buffer_head < kMaxNumEventsPerChannel) {
-+      event_buffer[event_buffer_head] = event;
-+      collect_context->event_buffer_head++;
++  static inline __device__ void CollectGpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp,
++                                                NpKitEventCollectContext* ctx) {
++    uint64_t event_buffer_head = ctx->event_buffer_head;
++    if (event_buffer_head < kMaxNumGpuEventsPerBuffer) {
++      NpKitEvent& event = ctx->event_buffer[event_buffer_head];
++      event.fields.type = type;
++      event.fields.size = size;
++      event.fields.rsvd = rsvd;
++      event.fields.timestamp = timestamp;
++      ctx->event_buffer_head++;
 +    }
 +  }
 +
-+  static inline __device__ void GenerateAndCollectGpuEvent(uint8_t type, uint32_t size,
-+                                                           uint32_t rsvd, uint64_t timestamp,
-+                                                           NpKitEvent* event,
-+                                                           NpKitEventCollectContext* collect_context) {
-+    GenerateGpuEvent(type, size, rsvd, timestamp, event);
-+    CollectGpuEvent(*event, collect_context);
-+  }
++  static void CollectCpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp, int channel_id);
 +
-+  static NpKitEventCollectContext* GetCpuEventCollectContext(int channel);
-+
-+  static void GenerateCpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp,
-+                               NpKitEvent* event);
-+
-+
-+  static void CollectCpuEvent(const NpKitEvent& event,
-+                              NpKitEventCollectContext* collect_context);
-+
-+  static void GenerateAndCollectCpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp,
-+                                        NpKitEvent* event, NpKitEventCollectContext* collect_context);
-+
-+  static uint64_t* GetCpuTimeStamp();
++  static uint64_t* GetCpuTimestamp();
 +
 + private:
 +  static void CpuTimestampUpdateThread();
 +
-+  static const uint64_t kMaxNumEventsPerChannel = 1ULL << 20;
++  // 64K * 512 * 16B = 512MB per GPU
++  static const uint64_t kMaxNumGpuEventsPerBuffer = 1ULL << 16;
 +
-+  static NpKitEvent* gpu_event_buffers_[MAXCHANNELS];
-+  static NpKitEvent* gpu_event_caches_[MAXCHANNELS];
-+  static NpKitEvent* cpu_event_buffers_[MAXCHANNELS];
++  // 64K * 2 (send/recv) * (512/32) = 2M, 2M * 32 * 16B = 1GB per CPU
++  static const uint64_t kMaxNumCpuEventsPerBuffer = 1ULL << 21;
 +
-+  static NpKitEventCollectContext* gpu_collect_contexts_[MAXCHANNELS];
-+  static NpKitEventCollectContext* cpu_collect_contexts_[MAXCHANNELS];
++  static NpKitEvent** gpu_event_buffers_;
++  static NpKitEvent** cpu_event_buffers_;
++
++  static NpKitEventCollectContext* gpu_collect_contexts_;
++  static NpKitEventCollectContext* cpu_collect_contexts_;
 +  static uint64_t* cpu_timestamp_;
 +
 +  static uint64_t rank_;
@@ -92,4 +72,3 @@ index 0000000..0c002c4
 +};
 +
 +#endif
-\ No newline at end of file

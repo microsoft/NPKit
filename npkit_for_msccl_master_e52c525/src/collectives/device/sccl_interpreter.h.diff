@@ -2,7 +2,7 @@ Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
 
 diff --git a/src/collectives/device/sccl_interpreter.h b/src/collectives/device/sccl_interpreter.h
-index 76ea33b..b4c1a74 100644
+index 76ea33b..4cb0ddc 100644
 --- a/src/collectives/device/sccl_interpreter.h
 +++ b/src/collectives/device/sccl_interpreter.h
 @@ -7,6 +7,9 @@
@@ -15,44 +15,62 @@ index 76ea33b..b4c1a74 100644
  
  #define SCCL_MAX_ITER 65536
  
-@@ -41,6 +44,28 @@ class scclFunction {
-       const ssize_t sizePerScclChunk = (size*sizeMultiplier)/scclAlgo->nchunksPerLoop;
-       uint32_t scclMaxAllowedCount = args->scclMaxAllowedCount;
+@@ -34,13 +37,46 @@ class scclFunction {
+       int recvPeer = scclTB->recvpeer;
+       int sendPeer = scclTB->sendpeer;
  
++#if defined(ENABLE_NPKIT)
++      int npKitCtxIdx = bid;
++#endif
++
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_TIME_SYNC_CPU)
-+      if (threadIdx.x == 0) {
-+        uint64_t* cpuTimestamp = channel->cpuTimestamp;
-+        NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_TIME_SYNC_CPU, 0, 0, *cpuTimestamp,
-+            &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++      if (tid == 0) {
++        uint64_t* cpuTimestamp = comm->cpuTimestamp;
++        NpKit::CollectGpuEvent(NPKIT_EVENT_TIME_SYNC_CPU, 0, 0, *cpuTimestamp,
++            comm->npKitEventCollectContexts + npKitCtxIdx);
 +      }
 +#endif
 +
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_TIME_SYNC_GPU)
-+      if (threadIdx.x == 0) {
-+        NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_TIME_SYNC_GPU, 0, 0, clock64(),
-+            &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++      if (tid == 0) {
++        NpKit::CollectGpuEvent(NPKIT_EVENT_TIME_SYNC_GPU, 0, 0, clock64(),
++            comm->npKitEventCollectContexts + npKitCtxIdx);
 +      }
 +#endif
 +
+       PRIMS_WRAPPER prims{args, tid, &recvPeer, &sendPeer, thisOutput, channel};
+ 
++#if defined(ENABLE_NPKIT)
++      if (tid == 0) {
++        prims.prims.npKitCtxIdx = npKitCtxIdx;
++      }
++#endif
++
+       const ssize_t loopSize = (ssize_t)prims.chunkSize;
+       const ssize_t size = args->coll.count;
+       const ssize_t sizePerScclChunk = (size*sizeMultiplier)/scclAlgo->nchunksPerLoop;
+       uint32_t scclMaxAllowedCount = args->scclMaxAllowedCount;
+ 
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SCCL_ENTRY)
-+      if (threadIdx.x == 0) {
-+        NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_SCCL_ENTRY, size*sizeof(T), 0, clock64(),
-+            &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++      if (tid == 0) {
++        NpKit::CollectGpuEvent(NPKIT_EVENT_SCCL_ENTRY, size*sizeof(T), 0, clock64(),
++            comm->npKitEventCollectContexts + npKitCtxIdx);
++        prims.prims.npKitDataProcessTotalTime = 0;
 +      }
 +#endif
 +
        // sccl flags all start out with 0. this is used as a part of the flag to make sure different work items deal with different synchronization flags
        // this still needs more work. when we make a way around the queue, the flag might have been set to undesired values. will be fixed in subsequent versions.
        const int workIndex = args->index+1;
-@@ -110,6 +135,14 @@ class scclFunction {
+@@ -110,6 +146,14 @@ class scclFunction {
            }
          }
        }
 +
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SCCL_EXIT)
-+      if (threadIdx.x == 0) {
-+        NpKit::GenerateAndCollectGpuEvent(NPKIT_EVENT_SCCL_EXIT, size*sizeof(T), 0, clock64(),
-+            &(channel->npKitEvent), channel->gpuNpKitEventCollectContext);
++      if (tid == 0) {
++        NpKit::CollectGpuEvent(NPKIT_EVENT_SCCL_EXIT, size*sizeof(T), prims.prims.npKitDataProcessTotalTime, clock64(),
++            comm->npKitEventCollectContexts + npKitCtxIdx);
 +      }
 +#endif
 +

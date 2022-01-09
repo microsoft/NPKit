@@ -2,7 +2,7 @@ Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
 
 diff --git a/src/init.cc b/src/init.cc
-index 6fb251f..32cea36 100644
+index 6fb251f..5446fa8 100644
 --- a/src/init.cc
 +++ b/src/init.cc
 @@ -16,6 +16,9 @@
@@ -15,19 +15,21 @@ index 6fb251f..32cea36 100644
  #include <fcntl.h>
  #include <string.h>
  #include <errno.h>
-@@ -768,6 +771,11 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, ncclUniqueId* comm
- 
-   NCCLCHECK(computeBuffSizes(comm));
+@@ -331,6 +334,13 @@ static ncclResult_t devCommSetup(ncclComm_t comm) {
+     NCCLCHECK(ncclCudaMemcpy(comm->channels[r].ring.devUserRanks, comm->channels[r].ring.userRanks, comm->nRanks));
+   }
  
 +#if defined(ENABLE_NPKIT)
-+  // Init NPKit before init channels
-+  NCCLCHECK(NpKit::Init(rank));
++  // Init NPKit
++  NCCLCHECK(NpKit::Init(comm->rank));
++  comm->hostDevComm.npKitEventCollectContexts = NpKit::GetGpuEventCollectContexts();
++  comm->hostDevComm.cpuTimestamp = NpKit::GetCpuTimestamp();
 +#endif
 +
-   // Connect with prev/next for each ring
-   for (int c=0; c<comm->nChannels; c++) {
-     struct ncclChannel* channel = comm->channels+c;
-@@ -994,6 +1002,17 @@ static ncclResult_t commDestroy(ncclComm_t comm) {
+   // Duplicate the dev comm on the device
+   NCCLCHECK(ncclCudaMemcpy(comm->devComm, &comm->hostDevComm, 1));
+   return ncclSuccess;
+@@ -994,6 +1004,17 @@ static ncclResult_t commDestroy(ncclComm_t comm) {
  
    TRACE(NCCL_INIT, "Destroyed comm %p rank %d", comm, comm->rank);
  
