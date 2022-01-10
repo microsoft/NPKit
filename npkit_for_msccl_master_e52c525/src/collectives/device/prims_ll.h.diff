@@ -1,0 +1,21 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/collectives/device/prims_ll.h b/src/collectives/device/prims_ll.h
+index 52f0604..86614f7 100644
+--- a/src/collectives/device/prims_ll.h
++++ b/src/collectives/device/prims_ll.h
+@@ -29,6 +29,13 @@ class ncclLLPrimitives {
+   union ncclLLFifoLine* sendBuff[NSEND];
+   struct ncclDevComm* comm;
+ 
++#if defined(ENABLE_NPKIT)
++public:
++  int npKitCtxIdx = 0;
++  uint64_t npKitDataProcessTotalTime = 0;
++private:
++#endif
++
+   inline __device__ int recvOffset(int i) { return (recvStep[i]%NCCL_STEPS)*stepLines; }
+   inline __device__ int sendOffset(int i) { return (sendStep[i]%NCCL_STEPS)*stepLines; }
+   inline __device__ union ncclLLFifoLine* recvPtr(int i) { return recvBuff[i]+recvOffset(i); }

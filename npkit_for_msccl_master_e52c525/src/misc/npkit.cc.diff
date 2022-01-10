@@ -3,10 +3,10 @@ Licensed under the MIT License.
 
 diff --git a/src/misc/npkit.cc b/src/misc/npkit.cc
 new file mode 100644
-index 0000000..f0fc531
+index 0000000..9660fb2
 --- /dev/null
 +++ b/src/misc/npkit.cc
-@@ -0,0 +1,186 @@
+@@ -0,0 +1,172 @@
 +#include <chrono>
 +#include <fstream>
 +#include <unistd.h>
@@ -16,12 +16,11 @@ index 0000000..f0fc531
 +
 +uint64_t NpKit::rank_ = 0;
 +
-+NpKitEvent* NpKit::gpu_event_buffers_[MAXCHANNELS] = {0};
-+NpKitEvent* NpKit::gpu_event_caches_[MAXCHANNELS] = {0};
-+NpKitEvent* NpKit::cpu_event_buffers_[MAXCHANNELS] = {0};
++NpKitEvent** NpKit::gpu_event_buffers_ = nullptr;
++NpKitEvent** NpKit::cpu_event_buffers_ = nullptr;
 +
-+NpKitEventCollectContext* NpKit::gpu_collect_contexts_[MAXCHANNELS] = {0};
-+NpKitEventCollectContext* NpKit::cpu_collect_contexts_[MAXCHANNELS] = {0};
++NpKitEventCollectContext* NpKit::gpu_collect_contexts_ = nullptr;
++NpKitEventCollectContext* NpKit::cpu_collect_contexts_ = nullptr;
 +uint64_t* NpKit::cpu_timestamp_ = nullptr;
 +
 +std::thread* NpKit::cpu_timestamp_update_thread_ = nullptr;
@@ -40,26 +39,25 @@ index 0000000..f0fc531
 +
 +ncclResult_t NpKit::Init(int rank) {
 +  uint64_t i = 0;
-+  NpKitEventCollectContext context;
-+  context.event_buffer_head = 0;
++  NpKitEventCollectContext ctx;
++  ctx.event_buffer_head = 0;
 +  rank_ = rank;
 +
-+  for (i = 0; i < MAXCHANNELS; i++) {
-+    // Init event buffers
-+    NCCLCHECK(ncclCudaCalloc(&(gpu_event_buffers_[i]), kMaxNumEventsPerChannel));
-+    NCCLCHECK(ncclCudaCalloc(&(gpu_event_caches_[i]), kMaxNumEventsCachedPerChannel));
-+    NCCLCHECK(ncclCalloc(&(cpu_event_buffers_[i]), kMaxNumEventsPerChannel));
++  // Init event data structures
++  NCCLCHECK(ncclCalloc(&gpu_event_buffers_, kNumGpuEventBuffers));
++  NCCLCHECK(ncclCudaCalloc(&gpu_collect_contexts_, kNumGpuEventBuffers));
++  for (i = 0; i < kNumGpuEventBuffers; i++) {
++    NCCLCHECK(ncclCudaCalloc(gpu_event_buffers_ + i, kMaxNumGpuEventsPerBuffer));
++    ctx.event_buffer = gpu_event_buffers_[i];
++    NCCLCHECK(ncclCudaMemcpy(gpu_collect_contexts_ + i, &ctx, 1));
++  }
 +
-+    // Init collect contexts
-+    context.event_buffer = gpu_event_buffers_[i];
-+    context.event_cache = gpu_event_caches_[i];
-+    NCCLCHECK(ncclCudaCalloc(&(gpu_collect_contexts_[i]), 1));
-+    NCCLCHECK(ncclCudaMemcpy(gpu_collect_contexts_[i], &context, 1));
-+
-+    context.event_buffer = cpu_event_buffers_[i];
-+    context.event_cache = nullptr;
-+    NCCLCHECK(ncclCalloc(&(cpu_collect_contexts_[i]), 1));
-+    NCCLCHECK(ncclCudaMemcpy(cpu_collect_contexts_[i], &context, 1));
++  NCCLCHECK(ncclCalloc(&cpu_event_buffers_, kNumCpuEventBuffers));
++  NCCLCHECK(ncclCalloc(&cpu_collect_contexts_, kNumCpuEventBuffers));
++  for (i = 0; i < kNumCpuEventBuffers; i++) {
++    NCCLCHECK(ncclCalloc(cpu_event_buffers_ + i, kMaxNumCpuEventsPerBuffer));
++    ctx.event_buffer = cpu_event_buffers_[i];
++    cpu_collect_contexts_[i] = ctx;
 +  }
 +
 +  // Init timestamp
@@ -75,7 +73,7 @@ index 0000000..f0fc531
 +  std::string dump_file_path;
 +
 +  // Dump CPU events
-+  for (i = 0; i < MAXCHANNELS; i++) {
++  for (i = 0; i < kNumCpuEventBuffers; i++) {
 +    dump_file_path = dump_dir;
 +    dump_file_path += "/cpu_events_rank_";
 +    dump_file_path += std::to_string(rank_);
@@ -83,7 +81,7 @@ index 0000000..f0fc531
 +    dump_file_path += std::to_string(i);
 +    auto cpu_trace_file = std::fstream(dump_file_path, std::ios::out | std::ios::binary);
 +    cpu_trace_file.write(reinterpret_cast<char*>(cpu_event_buffers_[i]),
-+        cpu_collect_contexts_[i]->event_buffer_head * sizeof(NpKitEvent));
++        cpu_collect_contexts_[i].event_buffer_head * sizeof(NpKitEvent));
 +    cpu_trace_file.close();
 +  }
 +
@@ -105,17 +103,17 @@ index 0000000..f0fc531
 +  clock_period_den_file.close();
 +
 +  // Dump GPU events, reuse CPU struct
-+  for (i = 0; i < MAXCHANNELS; i++) {
++  for (i = 0; i < kNumGpuEventBuffers; i++) {
 +    dump_file_path = dump_dir;
 +    dump_file_path += "/gpu_events_rank_";
 +    dump_file_path += std::to_string(rank_);
-+    dump_file_path += "_channel_";
++    dump_file_path += "_buf_";
 +    dump_file_path += std::to_string(i);
-+    NCCLCHECK(ncclCudaMemcpy(cpu_event_buffers_[i], gpu_event_buffers_[i], kMaxNumEventsPerChannel));
-+    NCCLCHECK(ncclCudaMemcpy(cpu_collect_contexts_[i], gpu_collect_contexts_[i], 1));
++    NCCLCHECK(ncclCudaMemcpy(cpu_event_buffers_[0], gpu_event_buffers_[i], kMaxNumGpuEventsPerBuffer));
++    NCCLCHECK(ncclCudaMemcpy(cpu_collect_contexts_, gpu_collect_contexts_ + i, 1));
 +    auto gpu_trace_file = std::fstream(dump_file_path, std::ios::out | std::ios::binary);
-+    gpu_trace_file.write(reinterpret_cast<char*>(cpu_event_buffers_[i]),
-+        cpu_collect_contexts_[i]->event_buffer_head * sizeof(NpKitEvent));
++    gpu_trace_file.write(reinterpret_cast<char*>(cpu_event_buffers_[0]),
++        cpu_collect_contexts_[0].event_buffer_head * sizeof(NpKitEvent));
 +    gpu_trace_file.close();
 +  }
 +
@@ -142,16 +140,19 @@ index 0000000..f0fc531
 +  cpu_timestamp_update_thread_should_stop_ = true;
 +  cpu_timestamp_update_thread_->join();
 +
-+  for (i = 0; i < MAXCHANNELS; i++) {
-+    // Free event buffers
-+    CUDACHECK(cudaFree(gpu_event_buffers_[i]));
-+    CUDACHECK(cudaFree(gpu_event_caches_[i]));
++  // Free CPU event data structures
++  for (i = 0; i < kNumCpuEventBuffers; i++) {
 +    free(cpu_event_buffers_[i]);
-+
-+    // Free collect contexts
-+    CUDACHECK(cudaFree(gpu_collect_contexts_[i]));
-+    free(cpu_collect_contexts_[i]);
 +  }
++  free(cpu_event_buffers_);
++  free(cpu_collect_contexts_);
++
++  // Free GPU event data structures
++  for (i = 0; i < kNumGpuEventBuffers; i++) {
++    CUDACHECK(cudaFree(gpu_event_buffers_[i]));
++  }
++  free(gpu_event_buffers_);
++  CUDACHECK(cudaFree(gpu_collect_contexts_));
 +
 +  // Free timestamp
 +  NCCLCHECK(ncclCudaHostFree(cpu_timestamp_));
@@ -159,37 +160,22 @@ index 0000000..f0fc531
 +  return ncclSuccess;
 +}
 +
-+NpKitEventCollectContext* NpKit::GetGpuEventCollectContext(int channel) {
-+  return gpu_collect_contexts_[channel];
++NpKitEventCollectContext* NpKit::GetGpuEventCollectContexts() {
++  return gpu_collect_contexts_;
 +}
 +
-+NpKitEventCollectContext* NpKit::GetCpuEventCollectContext(int channel) {
-+  return cpu_collect_contexts_[channel];
-+}
-+
-+void NpKit::GenerateCpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp,
-+                             NpKitEvent* event) {
-+  event->fields.type = type;
-+  event->fields.size = size;
-+  event->fields.rsvd = rsvd;
-+  event->fields.timestamp = timestamp;
-+}
-+
-+void NpKit::CollectCpuEvent(const NpKitEvent& event, NpKitEventCollectContext* collect_context) {
-+  uint64_t event_buffer_head = collect_context->event_buffer_head;
-+  NpKitEvent* event_buffer = collect_context->event_buffer;
-+  if (event_buffer_head < kMaxNumEventsPerChannel) {
-+    event_buffer[event_buffer_head] = event;
-+    collect_context->event_buffer_head++;
++void NpKit::CollectCpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp, int channel_id) {
++  uint64_t event_buffer_head = cpu_collect_contexts_[channel_id].event_buffer_head;
++  if (event_buffer_head < kMaxNumCpuEventsPerBuffer) {
++    NpKitEvent& event = cpu_collect_contexts_[channel_id].event_buffer[event_buffer_head];
++    event.fields.type = type;
++    event.fields.size = size;
++    event.fields.rsvd = rsvd;
++    event.fields.timestamp = timestamp;
++    cpu_collect_contexts_[channel_id].event_buffer_head++;
 +  }
 +}
 +
-+void NpKit::GenerateAndCollectCpuEvent(uint8_t type, uint32_t size, uint32_t rsvd, uint64_t timestamp,
-+                                       NpKitEvent* event, NpKitEventCollectContext* collect_context) {
-+  GenerateCpuEvent(type, size, rsvd, timestamp, event);
-+  CollectCpuEvent(*event, collect_context);
-+}
-+
-+uint64_t* NpKit::GetCpuTimeStamp() {
++uint64_t* NpKit::GetCpuTimestamp() {
 +  return cpu_timestamp_;
 +}

@@ -3,10 +3,10 @@ Licensed under the MIT License.
 
 diff --git a/src/include/npkit/npkit_struct.h b/src/include/npkit/npkit_struct.h
 new file mode 100644
-index 0000000..6ea4bf3
+index 0000000..89dadcb
 --- /dev/null
 +++ b/src/include/npkit/npkit_struct.h
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,25 @@
 +#ifndef NPKIT_STRUCT_H_
 +#define NPKIT_STRUCT_H_
 +
@@ -27,7 +27,6 @@ index 0000000..6ea4bf3
 +struct NpKitEventCollectContext {
 +  NpKitEvent* event_buffer;
 +  uint64_t event_buffer_head;
-+  NpKitEvent* event_cache;
 +};
 +
 +#pragma pack(pop)

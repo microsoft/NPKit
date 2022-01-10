@@ -1,0 +1,21 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/collectives/device/prims_ll.h b/src/collectives/device/prims_ll.h
+index 507cfba..dcd5dc2 100644
+--- a/src/collectives/device/prims_ll.h
++++ b/src/collectives/device/prims_ll.h
+@@ -33,6 +33,13 @@ class Primitives<T, RedOp, Fan, Direct, ProtoLL>:
+   union ncclLLFifoLine* recvBuff[MaxRecv];
+   union ncclLLFifoLine* sendBuff[MaxSend];
+ 
++#if defined(ENABLE_NPKIT)
++public:
++  int npKitCtxIdx = 0;
++  uint64_t npKitDataProcessTotalTime = 0;
++private:
++#endif
++
+   inline __device__ int recvOffset(int i) { return (recvStep[i]%NCCL_STEPS)*stepLines; }
+   inline __device__ int sendOffset(int i) { return (sendStep[i]%NCCL_STEPS)*stepLines; }
+   inline __device__ union ncclLLFifoLine* recvPtr(int i) { return recvBuff[i]+recvOffset(i); }

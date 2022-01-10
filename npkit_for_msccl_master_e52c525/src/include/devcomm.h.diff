@@ -2,7 +2,7 @@ Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
 
 diff --git a/src/include/devcomm.h b/src/include/devcomm.h
-index d4c8c07..7854feb 100644
+index d4c8c07..25a2246 100644
 --- a/src/include/devcomm.h
 +++ b/src/include/devcomm.h
 @@ -9,6 +9,9 @@
@@ -15,17 +15,16 @@ index d4c8c07..7854feb 100644
  #include <stdint.h>
  
  #define NCCL_NUM_FUNCTIONS 7 // SendRecv not included for now
-@@ -294,6 +297,13 @@ struct ncclChannel {
-       struct ncclWork* workFifo;
-       int workCount;
-       uint64_t workFifoTail; // Only used by CPU
+@@ -316,6 +319,11 @@ struct ncclDevComm {
+ 
+   // Channels, device side
+   struct ncclChannel* channels;
 +
 +#if defined(ENABLE_NPKIT)
-+      NpKitEvent npKitEvent;
-+      NpKitEventCollectContext* gpuNpKitEventCollectContext;
-+      NpKitEventCollectContext* cpuNpKitEventCollectContext;
-+      uint64_t* cpuTimestamp;
++  NpKitEventCollectContext* npKitEventCollectContexts;
++  uint64_t* cpuTimestamp;
 +#endif
-     };
-     int data[0x80];
-   };
+ };
+ 
+ #endif
+\ No newline at end of file
