@@ -2,7 +2,7 @@ Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
 
 diff --git a/src/collectives/device/all_reduce.h b/src/collectives/device/all_reduce.h
-index bd088e9..defe716 100644
+index bd088e9..e2e9826 100644
 --- a/src/collectives/device/all_reduce.h
 +++ b/src/collectives/device/all_reduce.h
 @@ -7,6 +7,9 @@
@@ -309,7 +309,7 @@ index bd088e9..defe716 100644
 +    if (threadIdx.x == 0) {
 +      isNpKitThread = true;
 +      npKitCtxIdx = bid * 2;
-+    } else if (threadIdx.x == nthreadsSplit) {
++    } else if (tree->up != -1 && threadIdx.x == nthreadsSplit) {
 +      isNpKitThread = true;
 +      npKitCtxIdx = bid * 2 + 1;
 +    }
@@ -366,7 +366,7 @@ index bd088e9..defe716 100644
        }
 +
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_ALL_REDUCE_TREE_SPLIT_REDUCE_BROADCAST_EXIT)
-+      if (tid == 0) {
++      if (isNpKitThread) {
 +        NpKit::CollectGpuEvent(NPKIT_EVENT_ALL_REDUCE_TREE_SPLIT_REDUCE_BROADCAST_EXIT, size*sizeof(T), prims.npKitDataProcessTotalTime, clock64(),
 +            ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
 +      }
@@ -403,7 +403,7 @@ index bd088e9..defe716 100644
        }
 +
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_ALL_REDUCE_TREE_SPLIT_REDUCE_EXIT)
-+      if (tid == 0) {
++      if (isNpKitThread) {
 +        NpKit::CollectGpuEvent(NPKIT_EVENT_ALL_REDUCE_TREE_SPLIT_REDUCE_EXIT, size*sizeof(T), prims.npKitDataProcessTotalTime, clock64(),
 +            ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
 +      }
@@ -438,7 +438,7 @@ index bd088e9..defe716 100644
        }
 +
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_ALL_REDUCE_TREE_SPLIT_BROADCAST_EXIT)
-+      if (tid == 0) {
++      if (isNpKitThread) {
 +        NpKit::CollectGpuEvent(NPKIT_EVENT_ALL_REDUCE_TREE_SPLIT_BROADCAST_EXIT, size*sizeof(T), prims.npKitDataProcessTotalTime, clock64(),
 +            ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
 +      }
