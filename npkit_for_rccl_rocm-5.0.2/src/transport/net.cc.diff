@@ -1,0 +1,150 @@
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT License.
+
+diff --git a/src/transport/net.cc b/src/transport/net.cc
+index be24232..995221d 100644
+--- a/src/transport/net.cc
++++ b/src/transport/net.cc
+@@ -12,6 +12,9 @@
+ #include "collectives.h"
+ #include <hsa/hsa_ext_amd.h>
+ #include "gdrwrap.h"
++#if defined(ENABLE_NPKIT)
++#include "npkit/npkit.h"
++#endif
+ 
+ struct netConnectInfo {
+   ncclNetHandle_t netHandle;
+@@ -313,7 +316,16 @@ ncclResult_t netRecvFree(void* transportResources) {
+ 
+ static_assert(NCCL_STEPS <= NCCL_NET_MAX_REQUESTS, "Not enough net requests to cover for steps");
+ 
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++static int g_npkit_net_poll_cnt = 0;
++#endif
++
+ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++  g_npkit_net_poll_cnt++;
++#endif
++
+   if (args->state == ncclProxyOpReady) {
+     for (int s=0; s<args->nsubs; s++) {
+       struct ncclProxySubArgs* sub = args->subs+s;
+@@ -362,6 +374,11 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+         if (sizesFifo[buffSlot] != -1 && ((*recvTail > (sub->base+sub->transmitted)) || p == NCCL_PROTO_LL)) {
+           // We have something to receive, let's check if it's completely ready.
+           int size = sizesFifo[buffSlot];
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
++          sub->npKitSizesFifo[buffSlot] = size;
++#endif
++
+           char* buff = resources->shared ? (char*)resources->recvMem->ptrsFifo[buffSlot] : localBuff+buffSlot*stepSize;
+           int ready = 1;
+           if (p == NCCL_PROTO_LL128) {
+@@ -396,6 +413,22 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+             // Data is ready, try to send.
+             NCCLCHECK(ncclNetIsend(resources->netSendComm, buff, size, mhandle, sub->requests+buffSlot));
+             if (sub->requests[buffSlot] != NULL) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
++              NpKit::CollectCpuEvent(
++                  NPKIT_EVENT_NET_SEND_ENTRY,
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++                  g_npkit_net_poll_cnt,
++#else
++                  size,
++#endif
++                  uint64_t(sub->requests+buffSlot)/sizeof(void*),
++                  *(volatile uint64_t*)NpKit::GetCpuTimestamp(), sub->channel->id);
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++              g_npkit_net_poll_cnt = 0;
++#endif
++#endif
++
+ #ifdef ENABLE_PROFILING
+               if (sub->channel->active_req == 0) {
+                 gettimeofday(&sub->channel->tvs, NULL);
+@@ -422,6 +455,22 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+         int buffSlot = (sub->base+sub->done)%NCCL_STEPS;
+         NCCLCHECK(ncclNetTest(sub->requests[buffSlot], &done, NULL));
+         if (done) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_SEND_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_SEND_EXIT)
++          NpKit::CollectCpuEvent(
++              NPKIT_EVENT_NET_SEND_EXIT,
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++              g_npkit_net_poll_cnt,
++#else
++              sub->npKitSizesFifo[buffSlot],
++#endif
++              uint64_t(sub->requests+buffSlot)/sizeof(void*),
++              *(volatile uint64_t*)NpKit::GetCpuTimestamp(), sub->channel->id);
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++          g_npkit_net_poll_cnt = 0;
++#endif
++#endif
++
+           TRACE(NCCL_NET, "sendProxy [%lu/%d] request %p done", sub->done, buffSlot, sub->requests[buffSlot]);
+ #ifdef ENABLE_PROFILING
+           if (args->protocol == NCCL_PROTO_SIMPLE) {
+@@ -462,6 +511,11 @@ ncclResult_t netSendProxy(struct ncclProxyArgs* args) {
+ }
+ 
+ ncclResult_t netRecvProxy(struct ncclProxyArgs* args) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++  g_npkit_net_poll_cnt++;
++#endif
++
+   if (args->state == ncclProxyOpReady) {
+     for (int s=0; s<args->nsubs; s++) {
+       struct ncclProxySubArgs* sub = args->subs+s;
+@@ -499,6 +553,22 @@ ncclResult_t netRecvProxy(struct ncclProxyArgs* args) {
+         }
+         NCCLCHECK(ncclNetIrecv(resources->netRecvComm, ptr, buffSize, mhandle, sub->requests+buffSlot));
+         if (sub->requests[buffSlot] != NULL) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_RECV_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_RECV_EXIT)
++          NpKit::CollectCpuEvent(
++              NPKIT_EVENT_NET_RECV_ENTRY,
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++              g_npkit_net_poll_cnt,
++#else
++              buffSize,
++#endif
++              uint64_t(sub->requests+buffSlot)/sizeof(void*),
++              *(volatile uint64_t*)NpKit::GetCpuTimestamp(), sub->channel->id);
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++          g_npkit_net_poll_cnt = 0;
++#endif
++#endif
++
+           TRACE(NCCL_NET, "recvProxy [%lu/%d] posted recv request %p", sub->posted, buffSlot, sub->requests[buffSlot]);
+ #ifdef ENABLE_PROFILING
+           if (args->protocol == NCCL_PROTO_SIMPLE) {
+@@ -519,6 +589,22 @@ ncclResult_t netRecvProxy(struct ncclProxyArgs* args) {
+         int done, size;
+         NCCLCHECK(ncclNetTest(sub->requests[buffSlot], &done, &size));
+         if (done) {
++
++#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_NET_RECV_ENTRY) && defined(ENABLE_NPKIT_EVENT_NET_RECV_EXIT)
++          NpKit::CollectCpuEvent(
++              NPKIT_EVENT_NET_RECV_EXIT,
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++              g_npkit_net_poll_cnt,
++#else
++              size,
++#endif
++              uint64_t(sub->requests+buffSlot)/sizeof(void*),
++              *(volatile uint64_t*)NpKit::GetCpuTimestamp(), sub->channel->id);
++#if defined(ENABLE_NPKIT_NET_COLLECT_POLL_CNT)
++          g_npkit_net_poll_cnt = 0;
++#endif
++#endif
++
+           sub->received += args->sliceSteps;
+ #ifdef ENABLE_PROFILING
+           if (args->protocol == NCCL_PROTO_SIMPLE) {
