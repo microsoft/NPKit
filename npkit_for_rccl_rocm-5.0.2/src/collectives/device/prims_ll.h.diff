@@ -2,7 +2,7 @@ Copyright (c) Microsoft Corporation.
 Licensed under the MIT License.
 
 diff --git a/src/collectives/device/prims_ll.h b/src/collectives/device/prims_ll.h
-index d58b044..0eb3617 100644
+index d58b044..2eb5bc2 100644
 --- a/src/collectives/device/prims_ll.h
 +++ b/src/collectives/device/prims_ll.h
 @@ -5,6 +5,10 @@
@@ -46,7 +46,7 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_LL_WAIT_SEND_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_LL_WAIT_SEND_ENTRY, nbytes, 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      if (sendConnHeadPtr) {
@@ -59,7 +59,7 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_PRIM_LL_WAIT_SEND_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_LL_WAIT_SEND_EXIT, nbytes, 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -154,7 +154,7 @@ index d58b044..0eb3617 100644
 +      npKitWaitRecvTotalTime = 0;
 +      npKitWaitRecvDataProcessSize = nelem*sizeof(T);
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_LL_DATA_PROCESS_ENTRY,
-+          npKitWaitRecvDataProcessSize, 0, __builtin_amdgcn_s_memrealtime(), ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          npKitWaitRecvDataProcessSize, 0, __builtin_amdgcn_s_memrealtime(), ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
 +
@@ -183,7 +183,7 @@ index d58b044..0eb3617 100644
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_PRIM_LL_DATA_PROCESS_EXIT,
 +          npKitWaitRecvDataProcessSize, npKitWaitRecvTotalTime, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
 +
@@ -197,14 +197,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_SEND_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<0, 1, Input, -1>(inpIx, -1, eltN, false);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_SEND_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -212,14 +212,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_FROM_OUTPUT_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_SEND_FROM_OUTPUT_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<0, 1, Output, -1>(outIx, -1, eltN, false);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_SEND_FROM_OUTPUT_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_SEND_FROM_OUTPUT_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -227,14 +227,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<1, 0, -1, Output>(-1, outIx, eltN, postOp);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -242,14 +242,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_SEND_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_SEND_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<1, 1, Input, -1>(inpIx, -1, eltN, false);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_SEND_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_SEND_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -257,14 +257,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<1, 0, Input, Output>(inpIx, outIx, eltN, postOp);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -272,14 +272,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_COPY_SEND_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_COPY_SEND_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<0, 1, Input, Output>(inpIx, outIx, eltN, postOp);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_COPY_SEND_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_COPY_SEND_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -287,14 +287,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<1, 1, -1, Output>(-1, outIx, eltN, postOp);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_COPY_SEND_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_COPY_SEND_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
@@ -302,14 +302,14 @@ index d58b044..0eb3617 100644
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_SEND_ENTRY)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_SEND_ENTRY, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
      return LLGenericOp<1, 1, Input, Output>(inpIx, outIx, eltN, postOp);
 +#if defined(ENABLE_NPKIT) && defined(ENABLE_NPKIT_EVENT_RECV_REDUCE_COPY_SEND_EXIT)
 +    if (tid == 0) {
 +      NpKit::CollectGpuEvent(NPKIT_EVENT_RECV_REDUCE_COPY_SEND_EXIT, eltN*sizeof(T), 0, __builtin_amdgcn_s_memrealtime(),
-+          ncclShmem.comm.npKitEventCollectContexts + npKitCtxIdx);
++          ncclShmem->comm.npKitEventCollectContexts + npKitCtxIdx);
 +    }
 +#endif
    }
