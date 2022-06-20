@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
 set -x
 
 # Function that runs rccl-tests and collect NPKit traces.
