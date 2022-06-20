@@ -4,7 +4,7 @@ This folder contains scripts for NPKit sample workflow for RCCL. The sample work
 
 ## Dependencies
 
-[RCCL](https://github.com/ROCmSoftwarePlatform/rccl) (with NPKit integrated) and [rccl-tests]([RCCL](https://github.com/ROCmSoftwarePlatform/rccl-tests)).
+[RCCL](https://github.com/ROCmSoftwarePlatform/rccl) (with NPKit integrated) and [rccl-tests](https://github.com/ROCmSoftwarePlatform/rccl-tests).
 
 ## Usage
 
