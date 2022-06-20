@@ -8,7 +8,7 @@ This folder contains scripts for NPKit sample workflow for RCCL. The sample work
 
 ## Usage
 
-1) Make sure parameters in `npkit_launcher.sh` are valid. Note that currently NPKit only supports collecting non-overlapped events on GPU, and `NPKIT_FLAGS` should follow this rule.
+1) Make sure parameters in `npkit_launcher.sh` are valid. Note that currently NPKit only supports collecting non-overlapped events in GPU, and `NPKIT_FLAGS` should follow this rule.
 
 2) Make sure `rccl_test` function in `npkit_runner.sh` is a valid command to run `rccl-tests` binary. Note that currently NPKit only supports 1 GPU per process, so `-g 1` mode is required in `rccl-tests` commands.
 
