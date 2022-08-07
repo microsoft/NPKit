@@ -4,10 +4,10 @@
 set -x
 
 # Function that runs nccl-tests and collect NPKit traces.
-# nccl_test
+# msccl_test
 #   <nccl_test_bin> <msg_size> <algorithm> <protocol> <num_warmups> <num_iters>
 #   <npkit_dump_dir> <npkit_result_dir>
-function nccl_test() {
+function msccl_test() {
   mpirun --allow-run-as-root \
     -np 8 -host localhost:8 \
     -x LD_PRELOAD=$2/build/lib/libnccl.so.2:$LD_PRELOAD \
@@ -47,7 +47,7 @@ mkdir -p ${npkit_trace_dir}
 mkdir -p ${npkit_result_dir}
 
 # Run NPKit on all nodes.
-nccl_test ${NCCL_TEST_BIN} ${MSCCL_SRC_DIR} ${MSCCL_MSG_SIZE} ${MSCCL_ALGO} ${MSCCL_PROTO} ${MSCCL_NUM_WARMUPS} ${MSCCL_NUM_ITERS} ${npkit_dump_dir} ${npkit_result_dir} ${msccl_algo_xml}
+msccl_test ${NCCL_TEST_BIN} ${MSCCL_SRC_DIR} ${MSCCL_MSG_SIZE} ${MSCCL_ALGO} ${MSCCL_PROTO} ${MSCCL_NUM_WARMUPS} ${MSCCL_NUM_ITERS} ${npkit_dump_dir} ${npkit_result_dir} ${msccl_algo_xml}
 
 # Generate trace file
 cd ${NPKIT_SRC_DIR}/msccl_samples

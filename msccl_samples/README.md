@@ -1,6 +1,6 @@
 ## Introduction
 
-This folder contains scripts for NPKit sample workflow for MSCCL. The sample workflow first builds MSCCL with NPKit enabled, then runs nccl-tests to collect NPKit event dump files, and finally generates NPKit trace file.
+This folder contains scripts for NPKit sample workflow for MSCCL. The sample workflow first builds MSCCL with NPKit enabled, then runs msccl-test to collect NPKit event dump files, and finally generates NPKit trace file.
 
 ## Dependencies
 
