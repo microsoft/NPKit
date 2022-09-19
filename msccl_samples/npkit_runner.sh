@@ -38,7 +38,7 @@ msccl_algo_xml="${NPKIT_SRC_DIR}/msccl_samples/msccl_algo_sample.xml"
 # Build MSCCL with NPKit
 cd ${MSCCL_SRC_DIR}
 make clean
-make -j src.build NPKIT_FLAGS="${NPKIT_FLAGS}"
+make -j src.build NPKIT=1
 
 # Clean existing results
 rm -rf ${NPKIT_RUN_DIR}
