@@ -36,7 +36,7 @@ cd ${RCCL_SRC_DIR}
 rm -rf build
 mkdir -p build
 cd build
-CXX=/opt/rocm/bin/hipcc cmake -DNPKIT_FLAGS="${NPKIT_FLAGS}" ..
+CXX=/opt/rocm/bin/hipcc cmake -DCMAKE_PREFIX_PATH=/opt/rocm/ -DNPKIT_FLAGS="${NPKIT_FLAGS}" ..
 make -j
 
 # Clean existing results
