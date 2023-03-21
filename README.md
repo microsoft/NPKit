@@ -10,6 +10,10 @@ Below is an example of NPKit timeline result. Green blocks are LL128 data transf
 
 ![NPKit Result Example](./npkit_result_example.png)
 
+## Quick Start
+
+Please check `nccl_samples` for NCCL quick start, `rccl_samples` for RCCL quick start and `msccl_samples` for MSCCL quick start.
+
 ## Build
 
 NPKit is a patches series of some version of NCCL/RCCL/MSCCL. Users need to apply these patches to correct NCCL/RCCL/MSCCL version and build NCCL/RCCL/MSCCL with expected profiling events specified. In this section, we take NCCL 2.10.3-1, RCCL develop branch commit 4643a17 and MSCCL master branch commit e52c525 as examples. Assume we want to jointly profile LL128 data transfer time in GPU and net send/recv time in CPU:

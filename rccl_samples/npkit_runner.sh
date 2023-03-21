@@ -9,13 +9,12 @@ set -x
 #   <npkit_dump_dir> <npkit_result_dir>
 function rccl_test() {
   mpirun \
-    -np 16 -host localhost:16 \
-    -env LD_LIBRARY_PATH=$2/build:$LD_LIBRARY_PATH \
-    -env NCCL_DEBUG=INFO \
-    -env NCCL_DEBUG_SUBSYS=INIT,GRAPH \
-    -env NCCL_ALGO=$4 \
-    -env NCCL_PROTO=$5 \
-    -env NPKIT_DUMP_DIR=$8 \
+    -map-by ppr:16:node --bind-to numa \
+    -x LD_LIBRARY_PATH=$2/build:$LD_LIBRARY_PATH \
+    -x NCCL_DEBUG=WARN \
+    -x NCCL_ALGO=$4 \
+    -x NCCL_PROTO=$5 \
+    -x NPKIT_DUMP_DIR=$8 \
     $1 -b $3 -e $3 -f 2 -g 1 -c 1 -w $6 -n $7 | tee $9/log.txt
 }
 
