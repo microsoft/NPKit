@@ -1,3 +1,7 @@
+## Important Note
+
+We highly recommend use [msccl_samples](https://github.com/microsoft/NPKit/tree/main/msccl_samples) if one would like to profile NCCL, because [MSCCL](https://github.com/Azure/msccl) is actively maintained by Azure and includes all NCCL functions.
+
 ## Introduction
 
 This folder contains scripts for NPKit sample workflow for NCCL. The sample workflow first builds NCCL with NPKit enabled, then runs nccl-tests to collect NPKit event dump files, and finally generates NPKit trace file.

@@ -19,7 +19,7 @@ export NPKIT_RUN_DIR="/mnt/npkit_run"
 # Message size of RCCL operation.
 export RCCL_MSG_SIZE="16M"
 
-# RCCL communication algorithm. Ring and Tree are supported.
+# RCCL communication algorithm.
 export RCCL_ALGO="Ring"
 # export RCCL_ALGO="Tree"
 

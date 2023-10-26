@@ -1,16 +1,16 @@
 ## Introduction
 
-This folder contains scripts for NPKit sample workflow for MSCCL. The sample workflow first builds MSCCL with NPKit enabled, then runs msccl-test to collect NPKit event dump files, and finally generates NPKit trace file.
+This folder contains scripts for NPKit sample workflow for [MSCCL](https://github.com/Azure/msccl). The sample workflow first builds MSCCL with NPKit enabled, then runs msccl-test to collect NPKit event dump files, and finally generates NPKit trace file.
 
 ## Dependencies
 
-[MSCCL](https://github.com/microsoft/msccl) (with NPKit integrated) and [nccl-tests](https://github.com/microsoft/nccl-tests).
+[MSCCL executor](https://github.com/Azure/msccl-executor-nccl) (with NPKit integrated) and [MSCCL tests](https://github.com/Azure/msccl-tests-nccl).
 
 ## Usage
 
 1) Make sure parameters in `npkit_launcher.sh` are valid. Also note that currently NPKit only supports collecting non-overlapped events in GPU, and `NPKIT_FLAGS` should follow this rule.
 
-2) Make sure `msccl_test` function in `npkit_runner.sh` is a valid command to run `nccl-tests` binary. Also note that currently NPKit only supports 1 GPU per process, so `-g 1` mode is required in `nccl-tests` commands.
+2) Make sure `msccl_test` function in `npkit_runner.sh` is a valid command to run `msccl-tests-nccl` binary. Also note that currently NPKit only supports 1 GPU per process, so `-g 1` mode is required in `msccl-tests-nccl` commands.
 
 3) Run command `bash npkit_launcher.sh`.
 
