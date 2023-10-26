@@ -23,16 +23,6 @@ def parse_npkit_event_header(npkit_event_header_path):
             line_idx += 1
     return npkit_event_def
 
-def trim_event_name(event_type):
-    list_event_type_name = event_type.split("_")
-    if "NPKIT" in list_event_type_name:
-        list_event_type_name.remove("NPKIT")
-    if "EVENT" in list_event_type_name:
-        list_event_type_name.remove("EVENT")
-    if "ENTRY" in list_event_type_name:
-        list_event_type_name.remove("ENTRY")
-    return "_".join(list_event_type_name)
-
 def parse_gpu_clock_scale(gpu_clock_file_path):
     with open(gpu_clock_file_path, 'r') as f:
         freq_in_khz = f.read()
@@ -95,7 +85,7 @@ def parse_gpu_event_file(npkit_dump_dir, npkit_event_def, rank, buf_idx, gpu_clo
                     if event_type not in event_type_to_seq:
                         event_type_to_seq[event_type] = 0
                     gpu_events[-1].update({
-                        'name': trim_event_name(event_type),
+                        'name': event_type,
                         'cat': 'GPU',
                         'args': {
                             'rank': rank,

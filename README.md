@@ -1,80 +1,18 @@
 ## Introduction
 
-NPKit (NCCL Profiling Kit) is a joint profiler framework for [NVIDIA NCCL](https://github.com/NVIDIA/nccl), [AMD RCCL](https://github.com/ROCmSoftwarePlatform/rccl/) and [Microsoft MSCCL](https://github.com/microsoft/msccl/). It enables users to insert customized profiling events into different NCCL/RCCL/MSCCL components, especially into giant NCCL/RCCL/MSCCL GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand NCCL/RCCL/MSCCL's workflow and performance.
+NPKit (Networking Profiling Kit) is a profiling framework designed for popular collective communication libraries (CCLs), including [Microsoft MSCCL](https://github.com/Azure/msccl/), [NVIDIA NCCL](https://github.com/NVIDIA/nccl) and [AMD RCCL](https://github.com/ROCmSoftwarePlatform/rccl/). It enables users to insert customized profiling events into different CCL components, especially into giant GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand CCLs' workflow and performance.
 
-NPKit is easy to use. It's designed to be run with all kinds of NCCL/RCCL/MSCCL workloads. Users only need to insert their profiling events into NCCL/RCCL/MSCCL, replace existing NCCL/RCCL/MSCCL with NPKit-enabled version, run their workload that leverages NCCL/RCCL/MSCCL, and the unified timeline with profiling events are automatically generated.
+NPKit is easy to use. It runs with all kinds of workloads where CCLs are leveraged. Users only need to dynamically link their workload binary to CCLs built with NPKit enabled, then the unified timeline with profiling events are automatically generated.
 
 NPKit is lightweight. During each run, users can choose to only enable profiling events they care about to minimize overhead caused by NPKit.
 
-Below is an example of NPKit timeline result. Green blocks are LL128 data transfer times in GPU, and each line represents a NCCL/RCCL/MSCCL channel (thread block). Red/purple blocks are net send/recv times in CPU. Each block contains other attributes, including data size, channel ID, etc.
+Below is an example of NPKit timeline result. Green blocks are LL128 data transfer times in GPU, and each line represents a independent data flow (typically mapped to a channel or thread block). Red/purple blocks are net send/recv times in CPU. Each block contains other attributes, including data size, channel ID, etc.
 
 ![NPKit Result Example](./npkit_result_example.png)
 
 ## Quick Start
 
-Please check `nccl_samples` for NCCL quick start, `rccl_samples` for RCCL quick start and `msccl_samples` for MSCCL quick start.
-
-## Build
-
-NPKit is a patches series of some version of NCCL/RCCL/MSCCL. Users need to apply these patches to correct NCCL/RCCL/MSCCL version and build NCCL/RCCL/MSCCL with expected profiling events specified. In this section, we take NCCL 2.10.3-1, RCCL develop branch commit 4643a17 and MSCCL master branch commit e52c525 as examples. Assume we want to jointly profile LL128 data transfer time in GPU and net send/recv time in CPU:
-
-Build NPKit for NCCL v2.10.3-1:
-
-        $ git clone https://github.com/nvidia/nccl nccl-v2.10.3-1
-        $ cd nccl-v2.10.3-1
-        $ git checkout 7e51592
-        $ find ../npkit_for_nccl_v2.10.3-1/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
-        $ make -j src.build NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
-
-Build NPKit for RCCL develop branch 4643a17:
-
-        $ git clone https://github.com/rocmsoftwareplatform/rccl rccl-develop-4643a17
-        $ cd rccl-develop-4643a17
-        $ git checkout 4643a17
-        $ find ../npkit_for_rccl_develop_4643a17/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
-        $ mkdir build
-        $ cd build
-        $ CXX=/opt/rocm/bin/hipcc cmake -DNPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT" ..
-        $ make -j
-
-Build NPKit for MSCCL master branch e52c525:
-
-        $ git clone https://github.com/microsoft/msccl msccl-master-e52c525
-        $ cd msccl-master-e52c525
-        $ git checkout e52c525
-        $ find ../npkit_for_msccl_master_e52c525/ | grep '.diff$' | awk '{print "git apply "$1}' | bash
-        $ make -j src.build NPKIT_FLAGS="-DENABLE_NPKIT -DENABLE_NPKIT_EVENT_TIME_SYNC_CPU -DENABLE_NPKIT_EVENT_TIME_SYNC_GPU -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY -DENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT -DENABLE_NPKIT_EVENT_NET_SEND_ENTRY -DENABLE_NPKIT_EVENT_NET_SEND_EXIT -DENABLE_NPKIT_EVENT_NET_RECV_ENTRY -DENABLE_NPKIT_EVENT_NET_RECV_EXIT"
-
-Note that we use a series of `ENABLE_NPKIT*` flags. NPKit predefined flags can be found at `src/include/npkit/npkit_event.h`. In this example,
-
-* `ENABLE_NPKIT` is used to enable NPKit library.
-
-* `ENABLE_NPKIT_EVENT_TIME_SYNC_CPU` is used to synchronize CPU time, and is required if one wants to collect CPU-side events. `ENABLE_NPKIT_EVENT_TIME_SYNC_GPU` is used to synchronize GPU time, and is required for GPU-side events.
-
-* `ENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_ENTRY` and `ENABLE_NPKIT_EVENT_PRIM_LL128_DATA_PROCESS_EXIT` are used to collect LL128 data transfer time in GPU.
-
-* `ENABLE_NPKIT_EVENT_NET_SEND_ENTRY ENABLE_NPKIT_EVENT_NET_SEND_EXIT ENABLE_NPKIT_EVENT_NET_RECV_ENTRY ENABLE_NPKIT_EVENT_NET_RECV_EXIT` are used to collect network send/recv time in CPU.
-
-## Usage Example
-
-`src/samples/npkit/test_npkit_events.sh` contains a basic NPKit profiling workflow using nccl-tests. It sets some variables and then calls `run_nccl_tests_with_npkit.sh` to complete the profiling. To get it run, one needs to:
-
-In `test_npkit_events.sh`:
-* Make sure `NPKIT_NCCL_TEST_BIN` is correctly set.
-* Make sure `NPKIT_NCCL_PROTO` (NCCL_PROTO) and `NPKIT_NCCL_ALGO` (NCCL_ALGO) are correctly set.
-* Make sure `NPKIT_FLAGS` is correctly set. `NPKIT_FLAGS` in build section can be a reference.
-
-In `run_nccl_tests_with_npkit.sh`:
-* Make sure `hostfile` is filled with correct hostnames separated by new lines. Make sure the nodes can be accessed by ssh silently without password hint.
-* Make sure `parellel-ssh` and `parallel-scp` are installed.
-* Make sure `nccl_test` function in `run_nccl_tests_with_npkit.sh` makes sense on current platform. Note that currently NPKit only support 1-GPU-1-Process mode.
-* Make sure `npkit_src_dir` and `npkit_run_dir` are correct.
-
-Then run
-
-        $ bash test_npkit_events.sh
-
-Results can be found at `${npkit_run_dir}/npkit_post_process/npkit_result.tar.gz`. Decompress this file and one gets `npkit_event_trace.json` viewable by trace viewer.
+Please check `msccl_samples` for MSCCL quick start, `nccl_samples` for NCCL quick start and `rccl_samples` RCCL quick start.
 
 ## Trademarks
 
