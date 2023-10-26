@@ -1,6 +1,6 @@
 ## Important Note
 
-We highly recommend use [msccl_samples](https://github.com/microsoft/NPKit/tree/main/msccl_samples) if one would like to profile NCCL, because [MSCCL](https://github.com/Azure/msccl) is actively maintained by Azure and includes all NCCL functions.
+We highly recommend using [msccl_samples](https://github.com/microsoft/NPKit/tree/main/msccl_samples) to profile NCCL, because [MSCCL](https://github.com/Azure/msccl) includes all NCCL functions, has NPKit already integrated and is actively maintained by Azure. The patch for NCCL in this folder is not actively maintained.
 
 ## Introduction
 
