@@ -12,7 +12,7 @@ Below is an example of NPKit timeline result. Green blocks are LL128 data transf
 
 ## Quick Start
 
-Please check `msccl_samples` for MSCCL quick start, `nccl_samples` for NCCL quick start and `rccl_samples` RCCL quick start.
+Please check `msccl_samples` for MSCCL quick start, `nccl_samples` for NCCL quick start and `rccl_samples` for RCCL quick start.
 
 ## Trademarks
 
