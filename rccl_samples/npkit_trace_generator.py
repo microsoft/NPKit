@@ -99,7 +99,7 @@ def parse_gpu_event_file(npkit_dump_dir, npkit_event_def, rank, buf_idx, gpu_clo
                 else:
                     gpu_events[-1]['args'] = {'size': parsed_gpu_event['size'], 'rsvd': parsed_gpu_event['rsvd']}
                     delta_time = gpu_events[-1]['ts'] - gpu_events[-2]['ts']
-                    gpu_events[-1]['args']['bw (GB/s)'] = gpu_events[-1]['args']['size'] / delta_time / 1e3
+                    gpu_events[-1]['args']['bw (GB/s)'] = 0. if delta_time == 0. else gpu_events[-1]['args']['size'] / delta_time / 1e3
             raw_content_idx += raw_event_size
     return gpu_events
 
@@ -165,8 +165,7 @@ def parse_cpu_event_file(npkit_dump_dir, npkit_event_def, rank, channel, cpu_clo
 
                 delta_time = max(0.001, cpu_events[-1]['ts'] - last_ts)
                 cpu_events[-1]['args'] = {'size': parsed_cpu_event['size']}
-                cpu_events[-1]['args']['bw (GB/s)'] = \
-                cpu_events[-1]['args']['size'] / delta_time / 1e3
+                cpu_events[-1]['args']['bw (GB/s)'] = 0. if delta_time == 0. else cpu_events[-1]['args']['size'] / delta_time / 1e3
 
             cpu_events[-1]['tid'] = fiber_id + (channel + 1) * channel_shift
 
