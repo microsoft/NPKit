@@ -1,6 +1,6 @@
 ## Introduction
 
-NPKit (Networking Profiling Kit) is a profiling framework designed for popular collective communication libraries (CCLs), including [Microsoft MSCCL](https://github.com/Azure/msccl/), [NVIDIA NCCL](https://github.com/NVIDIA/nccl) and [AMD RCCL](https://github.com/ROCmSoftwarePlatform/rccl/). It enables users to insert customized profiling events into different CCL components, especially into giant GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand CCLs' workflow and performance.
+NPKit (Networking Profiling Kit) is a profiling framework designed for popular collective communication libraries (CCLs), including [Microsoft MSCCL](https://github.com/Azure/msccl/), [Microsoft MSCCL++](https://github.com/microsoft/mscclpp/), [NVIDIA NCCL](https://github.com/NVIDIA/nccl) and [AMD RCCL](https://github.com/ROCmSoftwarePlatform/rccl/). It enables users to insert customized profiling events into different CCL components, especially into giant GPU kernels. These events are then automatically placed onto a unified timeline in [Google Trace Event Format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview), which users can then leverage trace viewer to understand CCLs' workflow and performance.
 
 NPKit is easy to use. It runs with all kinds of workloads where CCLs are leveraged. Users only need to dynamically link their workload binary to CCLs built with NPKit enabled, then the unified timeline with profiling events are automatically generated.
 
@@ -12,7 +12,7 @@ Below is an example of NPKit timeline result. Green blocks are LL128 data transf
 
 ## Quick Start
 
-Please check `msccl_samples` for MSCCL quick start, `nccl_samples` for NCCL quick start and `rccl_samples` for RCCL quick start.
+Please check `msccl_samples` for MSCCL quick start, `mscclpp_samples` for MSCCL++ quick start, `nccl_samples` for NCCL quick start and `rccl_samples` for RCCL quick start.
 
 ## Trademarks
 
